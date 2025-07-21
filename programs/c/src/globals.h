@@ -19,21 +19,17 @@
 #include <gsl/gsl_cdf.h>
 #include <lapacke.h>
 
-#define NC 6 // 4 countries (0=USA, 1=CAN, 2=MEX, 3=CHN, 4=EU, 5=ROW)
+#define NC 3 // 3 countries (0=USA, 1=CHN, 2=ROW)
 #define USA 0
-#define CAN 1
-#define MEX 2
-#define CHN 3
-#define EU 4
-#define ROW 5
+#define CHN 1
+#define ROW 2
 
 
-#define NS 5 // 5 sectors (0=Ag, 1=Resources, 2=Trans Mfg, 3=Other Mfg, 4=Services)
-#define AG 0
-#define OIL 1
-#define CARS 2
-#define MFG 3
-#define SVC 4
+#define NS 4 // 4 sectors (0 = upstream, 1 = downstream, 2 = services, 3 = construction)
+#define UPS 0
+#define DNS 1
+#define SVC 2
+#define CNS 3
 
 #define NF 2 // 2 final uses (0=Cons, 1=Inv)
 #define FIN 0
@@ -43,7 +39,7 @@
 
 
 
-#define TNAFTA 0
+#define TSHOCK 0
 
 #define TINY 1.0e-12
 #define TINYSQ 1.0e-6
@@ -55,27 +51,6 @@
 #define NTH 1
 #endif
 
-#ifdef _CONSOLE
-#define KNRM  "\x1B[0m"
-#define KRED  "\x1B[31m"
-#define KGRN  "\x1B[32m"
-#define KYEL  "\x1B[33m"
-#define KBLU  "\x1B[34m"
-#define KMAG  "\x1B[35m"
-#define KCYN  "\x1B[36m"
-#define KWHT  "\x1B[37m"
-#define RESET "\033[0m"
-#else
-#define KNRM  ""
-#define KRED  ""
-#define KGRN  ""
-#define KYEL  ""
-#define KBLU  ""
-#define KMAG  ""
-#define KCYN  ""
-#define KWHT  ""
-#define RESET ""
-#endif
 
 typedef unsigned int uint;
 FILE * logfile;
@@ -83,36 +58,21 @@ uint eval_eqm_once_flag;
 uint eval_bgp_once_flag;
 uint read_seed;
 uint write_seed;
+uint target_sector_flag;
+uint target_country_flag;
+uint retaliation_flag;
+uint adjustment_flag;
+uint duration_flag;
 uint m_adj_cost;
 uint f_adj_cost;
 uint k_adj_cost;
 uint l_adj_cost;
 uint fixl;
-uint par;
-uint ghh_prefs;
-uint scenario2;
-uint iceberg;
-uint iceberg_flag;
-uint sym_te_flag;
-uint ltp_flag;
-uint sens;
-uint noio_flag;
-uint us_ht_flag;
-uint camta_flag;
-uint ucta_flag;
-uint dom_con_flag;
-uint us_ht_flag2;
-uint old_mfn_flag;
 uint cobb_douglas_flag;
 uint cobb_douglas_flag2;
-uint fix_tb_flag;
-uint fix_tb_flag2;
-uint old_iomat_flag;
-uint nokappa;
-uint eqkappa;
+uint par;
+uint ghh_prefs;
 uint eval_calfn_once;
-uint fix_k_flag;
-uint no_k_flag;
 
 static inline void set_all_v(double * v, uint n, double x)
 {

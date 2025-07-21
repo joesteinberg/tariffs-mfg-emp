@@ -87,9 +87,9 @@ int gnewton_iterate (gnewton_state_t * state)
 
   if( info > 0 )
     {
-      fprintf(logfile,KRED "The diagonal element of the triangular factor of A,\n" RESET);
-      fprintf(logfile,KRED "U(%i,%i) is zero, so that A is singular;\n" RESET, info, info );
-      fprintf(logfile,KRED "the solution could not be computed.\n" RESET);
+      fprintf(logfile,"The diagonal element of the triangular factor of A,\n");
+      fprintf(logfile,"U(%i,%i) is zero, so that A is singular;\n", info, info );
+      fprintf(logfile,"the solution could not be computed.\n");
       return GSL_EDOM;
     }
 

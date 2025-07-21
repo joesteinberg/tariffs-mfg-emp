@@ -66,10 +66,10 @@ int jacobian(
 
 	      if(gsl_isnan(tmp))
 		{
-		  fprintf(logfile,KRED "\t\tNaN detected in Jacobian processing...\n" RESET);
-		  fprintf(logfile,KRED "\t\tThread: %d\n" RESET,it);
-		  fprintf(logfile,KRED "\t\ti, x[i], xh[i]: %d, %0.4f, %0.4f\n" RESET,i,x->data[i],xh[it]->data[i]);
-		  fprintf(logfile,KRED "\t\tj, f[j], fh[j]: %d, %0.4f, %0.4f\n" RESET,j,f0[it]->data[j],fh[it]->data[j]);
+		  fprintf(logfile,"\t\tNaN detected in Jacobian processing...\n");
+		  fprintf(logfile,"\t\tThread: %d\n",it);
+		  fprintf(logfile,"\t\ti, x[i], xh[i]: %d, %0.4f, %0.4f\n",i,x->data[i],xh[it]->data[i]);
+		  fprintf(logfile,"\t\tj, f[j], fh[j]: %d, %0.4f, %0.4f\n",j,f0[it]->data[j],fh[it]->data[j]);
 		  abort = 1;
 #pragma omp flush(abort)
 		  break;
@@ -89,7 +89,7 @@ int jacobian(
 	{
 	  if(gsl_isnan(gsl_matrix_get(J,j,i)))
 	    {
-	      fprintf(logfile,KRED "\t\tElement (%d,%d) of Jacobian matrix is NaN!\n" RESET,i,j);
+	      fprintf(logfile,"\t\tElement (%d,%d) of Jacobian matrix is NaN!\n",i,j);
 	      return GSL_EFAILED;
 	    }
 	  col_chk[i] = col_chk[i] + fabs(gsl_matrix_get(J,j,i));
@@ -101,12 +101,12 @@ int jacobian(
     {
       if(fabs(col_chk[i]<1.0e-14))
 	{
-	  fprintf(logfile,KRED "Column (variable) %d of Jacobian matrix is all zeros!\n" RESET,i);
+	  fprintf(logfile,"Column (variable) %d of Jacobian matrix is all zeros!\n",i);
 	  return GSL_EFAILED;
 	}
       else if(fabs(row_chk[i]<1.0e-14))
 	{
-	  fprintf(logfile,KRED "Row (function) %d of Jacobian matrix is all zeros!\n" RESET,i);
+	  fprintf(logfile,"Row (function) %d of Jacobian matrix is all zeros!\n",i);
 	  return GSL_EFAILED;
 	}
 
@@ -117,7 +117,7 @@ int jacobian(
 
 uint find_root_deriv_mkl(gsl_multiroot_function_fdf * f)
 {
-  fprintf(logfile,KMAG "\n\tInitializing solver on %zu-variable system...\n" RESET,f->n);
+  fprintf(logfile,"\n\tInitializing solver on %zu-variable system...\n",f->n);
 
   uint status = 0, iter = 0;
   time_t start1 = 0, stop1 = 0, start2 = 0, stop2 = 0;
@@ -132,18 +132,18 @@ uint find_root_deriv_mkl(gsl_multiroot_function_fdf * f)
 
   if(status)
   {
-    fprintf(logfile,KRED "\t\tInitialization failed!\n" RESET);
+    fprintf(logfile,"\t\tInitialization failed!\n");
   }
   else
     {
       status = GSL_CONTINUE;
 
-      fprintf(logfile,KMAG "\t\tInitialization complete. Time = %0.2f\n" RESET,difftime(stop2,start2));
+      fprintf(logfile,"\t\tInitialization complete. Time = %0.2f\n",difftime(stop2,start2));
       double fmax = gsl_vector_max(s->f);
       double fmin = gsl_vector_min(s->f);
       if(fabs(fmax)<root_tol && fabs(fmin)<root_tol)
 	{
-	  fprintf(logfile,KMAG "\t\tInitial guess satisfies all equilibrium conditions!\n" RESET);	  
+	  fprintf(logfile,"\t\tInitial guess satisfies all equilibrium conditions!\n");	  
 	  status = GSL_SUCCESS;
 	}
 
@@ -199,7 +199,7 @@ uint find_root_deriv_mkl(gsl_multiroot_function_fdf * f)
 		{
 		  if(f->n <= 4)
 		    {
-		      fprintf(logfile,KMAG "\t\t%d, %0.2f secs \tf = (" RESET,iter,difftime(stop2,start2));
+		      fprintf(logfile,"\t\t%d, %0.2f secs \tf = (",iter,difftime(stop2,start2));
 		      uint i;
 		      for(i=0; i<f->n; i++)
 			{
@@ -209,7 +209,7 @@ uint find_root_deriv_mkl(gsl_multiroot_function_fdf * f)
 		    }
 		  else
 		    {
-		      fprintf(logfile,KMAG "\t\t%d, %0.0f secs\tmax = %0.2e, %d\tmin = %0.2e, %d\n" RESET,
+		      fprintf(logfile,"\t\t%d, %0.0f secs\tmax = %0.2e, %d\tmin = %0.2e, %d\n",
 			      iter,
 			      difftime(stop2,start2),
 			      gsl_vector_max(s->f),
@@ -225,10 +225,10 @@ uint find_root_deriv_mkl(gsl_multiroot_function_fdf * f)
 
       double sum = 0.0;
       sum = vsum(s->f);
-      fprintf(logfile,KMAG "\tFinished: %s." RESET,gsl_strerror (status));
+      fprintf(logfile,"\tFinished: %s.",gsl_strerror (status));
       if(status==0)
 	{
-	  fprintf(logfile,KMAG " Time = %0.2f, iter = %u, sum |f| = %0.6g" RESET,
+	  fprintf(logfile," Time = %0.2f, iter = %u, sum |f| = %0.6g",
 		  difftime(stop1,start1),iter,sum);
 	}
       fprintf(logfile,"\n");
@@ -243,7 +243,7 @@ uint find_root_deriv_mkl(gsl_multiroot_function_fdf * f)
     }
   else
     {
-      fprintf(logfile,KRED "\tError solving system of equations!\n" RESET);
+      fprintf(logfile,"\tError solving system of equations!\n");
       return 1;
     }
 }

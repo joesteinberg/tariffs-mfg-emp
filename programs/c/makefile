@@ -5,7 +5,7 @@ LDFLAGS = -lpthread -lm -ldl -lcblas -llapacke -lgsl -g
 EXDIR = bin
 ODIR = src/obj
 
-_OBJ = main.o eqm.o calibrate.o exporters.o solver.o gnewton.o
+_OBJ = main.o eqm.o calibrate.o solver.o gnewton.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: src/%.c $(DEPS)
