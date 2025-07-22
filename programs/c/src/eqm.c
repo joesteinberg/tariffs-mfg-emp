@@ -4,39 +4,39 @@
 #include "eqm.h"
 
 // wage (NC), sectoral capital (NC*NS), sectoral labor (NC*NS), gross output prices (NC*NS),
-// sectoral consumption (NC*NS)
-const uint nbgp = NC+4*NC*NS;
+// sectoral consumption (NC*(NS-1))
+const uint nbgp = NC+3*NC*NS+NC*(NS-1);
 
 void set_neqm()
 {
   // key eqm vars used in solver: wage (NC), sectoral investment (NC*NS, but not in last period),
-  // sectoral labor (NC*NS), gross output prices (NC*NS), sectoral consumption (NC*NS), 
+  // sectoral labor (NC*NS), gross output prices (NC*NS), sectoral consumption (NC*(NS-1)), 
   // bonds (NC-1, but not in first period), bond price (1, but not in last period)
 
   // deterministic no-Brexit counterfactual
   if(scenario==0)
     {
-      neqm = (NT+1)*NC + 3*(NT+1)*NC*NS +NT*NC*NS + NT*(NC-1) + NT;
+      neqm = (NT+1)*NC + 2*(NT+1)*NC*NS + (NT+1)*NC*(NS-1) + NT*NC*NS + NT*(NC-1) + NT;
       if(f_adj_cost)
 	{
-	  neqm = neqm + NT*NC*NS*NC + NT*NC*NS;
+	  neqm = neqm + NT*NC*(NS-1)*NC + NT*NC*(NS-1);
 	}
       if(m_adj_cost)
 	{
-	  neqm = neqm + NT*NC*NS*NC + NT*NC*NS;
+	  neqm = neqm + NT*NC*(NS-1)*NC + NT*NC*(NS-1);
 	}
     }
   else if(scenario==1)
     {
       uint nn = NT+1-TSHOCK;
-      neqm = (nn)*NC + 3*(nn)*NC*NS + (nn-1)*NC*NS + (nn-1)*(NC-1) + (nn-1);
+      neqm = (nn)*NC + 2*(nn)*NC*NS + (nn)*NC*(NS-1) + (nn-1)*NC*NS + (nn-1)*(NC-1) + (nn-1);
       if(f_adj_cost)
 	{
-	  neqm = neqm + (nn-1)*NC*NS*NC + (nn-1)*NC*NS;
+	  neqm = neqm + (nn-1)*NC*(NS-1)*NC + (nn-1)*NC*(NS-1);
 	}
       if(m_adj_cost)
 	{
-	  neqm = neqm + (nn-1)*NC*NS*NC + (nn-1)*NC*NS;
+	  neqm = neqm + (nn-1)*NC*(NS-1)*NC + (nn-1)*NC*(NS-1);
 	}
     }
 }
@@ -77,27 +77,27 @@ void init_vars(eqm * e)
 
   SET_ALL_V(e->y_t,(NT+1)*NC*NS,0.0);
   SET_ALL_V(e->va_t,(NT+1)*NC*NS,0.0);
-  SET_ALL_V(e->md_t,(NT+1)*NC*NS*NS,0.0);
+  SET_ALL_V(e->md_t,(NT+1)*NC*NS*(NS-1),0.0);
   SET_ALL_V(e->k_t,(NT+1)*NC*NS,0.0);
   SET_ALL_V(e->l_t,(NT+1)*NC*NS,0.0);
   SET_ALL_V(e->is_t,(NT+1)*NC*NS,0.0);
   SET_ALL_V(e->lp_t,(NT+1)*NC*NS,0.0);
 
-  SET_ALL_V(e->exs_t,(NT+1)*NC*NS*NC,0.0);
-  SET_ALL_V(e->ims_t,(NT+1)*NC*NS*NC,0.0);
-  SET_ALL_V(e->nxs_t,(NT+1)*NC*NS*NC,0.0);
-  SET_ALL_V(e->rexs_t,(NT+1)*NC*NS*NC,0.0);
-  SET_ALL_V(e->rims_t,(NT+1)*NC*NS*NC,0.0);
+  SET_ALL_V(e->exs_t,(NT+1)*NC*(NS-1)*NC,0.0);
+  SET_ALL_V(e->ims_t,(NT+1)*NC*(NS-1)*NC,0.0);
+  SET_ALL_V(e->nxs_t,(NT+1)*NC*(NS-1)*NC,0.0);
+  SET_ALL_V(e->rexs_t,(NT+1)*NC*(NS-1)*NC,0.0);
+  SET_ALL_V(e->rims_t,(NT+1)*NC*(NS-1)*NC,0.0);
 
-  SET_ALL_V(e->pm_t,(NT+1)*NC*NS,0.0);
-  SET_ALL_V(e->m_t,(NT+1)*NC*NS,0.0);
-  SET_ALL_V(e->m2_t,(NT+1)*NC*NS*NC,0.0);
+  SET_ALL_V(e->pm_t,(NT+1)*NC*(NS-1),0.0);
+  SET_ALL_V(e->m_t,(NT+1)*NC*(NS-1),0.0);
+  SET_ALL_V(e->m2_t,(NT+1)*NC*(NS-1)*NC,0.0);
 
-  SET_ALL_V(e->p_t,(NT+1)*NC*NS,0.0);
-  SET_ALL_V(e->q_t,(NT+1)*NC*NS,0.0);
-  SET_ALL_V(e->q2_t,(NT+1)*NC*NS*NC,0.0);
+  SET_ALL_V(e->p_t,(NT+1)*NC*(NS-1),0.0);
+  SET_ALL_V(e->q_t,(NT+1)*NC*(NS-1),0.0);
+  SET_ALL_V(e->q2_t,(NT+1)*NC*(NS-1)*NC,0.0);
 
-  SET_ALL_V(e->c_t,(NT+1)*NC*NS,0.0);
+  SET_ALL_V(e->c_t,(NT+1)*NC*(NS-1),0.0);
   SET_ALL_V(e->i_t,(NT+1)*NC*NS,0.0);
 
 }
@@ -199,50 +199,50 @@ void copy_vars(eqm * e1, const eqm * e0)
 	 sizeof(double)*(NT+1)*NC*NS);
   memcpy((double *)(e1->md_t),
 	 (const double *)(e0->md_t),
-	 sizeof(double)*(NT+1)*NC*NS*NS);
+	 sizeof(double)*(NT+1)*NC*NS*(NS-1));
   memcpy((double *)(e1->lp_t),
 	 (const double *)(e0->lp_t),
 	 sizeof(double)*(NT+1)*NC*NS);
 
   memcpy((double *)(e1->exs_t),
 	 (const double *)(e0->exs_t),
-	 sizeof(double)*(NT+1)*NC*NS*NC);
+	 sizeof(double)*(NT+1)*NC*(NS-1)*NC);
   memcpy((double *)(e1->ims_t),
 	 (const double *)(e0->ims_t),
-	 sizeof(double)*(NT+1)*NC*NS*NC);
+	 sizeof(double)*(NT+1)*NC*(NS-1)*NC);
   memcpy((double *)(e1->nxs_t),
 	 (const double *)(e0->nxs_t),
-	 sizeof(double)*(NT+1)*NC*NS*NC);
+	 sizeof(double)*(NT+1)*NC*(NS-1)*NC);
   memcpy((double *)(e1->rexs_t),
 	 (const double *)(e0->rexs_t),
-	 sizeof(double)*(NT+1)*NC*NS*NC);
+	 sizeof(double)*(NT+1)*NC*(NS-1)*NC);
   memcpy((double *)(e1->rims_t),
 	 (const double *)(e0->rims_t),
-	 sizeof(double)*(NT+1)*NC*NS*NC);
+	 sizeof(double)*(NT+1)*NC*(NS-1)*NC);
 
   memcpy((double *)(e1->pm_t),
 	 (const double *)(e0->pm_t),
-	 sizeof(double)*(NT+1)*NC*NS);
+	 sizeof(double)*(NT+1)*NC*(NS-1));
   memcpy((double *)(e1->m_t),
 	 (const double *)(e0->m_t),
-	 sizeof(double)*(NT+1)*NC*NS);
+	 sizeof(double)*(NT+1)*NC*(NS-1));
   memcpy((double *)(e1->m2_t),
 	 (const double *)(e0->m2_t),
-	 sizeof(double)*(NT+1)*NC*NS*NC);
+	 sizeof(double)*(NT+1)*NC*(NS-1)*NC);
 
   memcpy((double *)(e1->p_t),
 	 (const double *)(e0->p_t),
-	 sizeof(double)*(NT+1)*NC*NS);
+	 sizeof(double)*(NT+1)*NC*(NS-1));
   memcpy((double *)(e1->q_t),
 	 (const double *)(e0->q_t),
-	 sizeof(double)*(NT+1)*NC*NS);
+	 sizeof(double)*(NT+1)*NC*(NS-1));
   memcpy((double *)(e1->q2_t),
 	 (const double *)(e0->q2_t),
-	 sizeof(double)*(NT+1)*NC*NS*NC);
+	 sizeof(double)*(NT+1)*NC*(NS-1)*NC);
 
   memcpy((double *)(e1->c_t),
 	 (const double *)(e0->c_t),
-	 sizeof(double)*(NT+1)*NC*(NS));
+	 sizeof(double)*(NT+1)*NC*(NS-1));
   memcpy((double *)(e1->i_t),
 	 (const double *)(e0->i_t),
 	 sizeof(double)*(NT+1)*NC*NS);
@@ -275,8 +275,8 @@ uint stack_bgp_vars(double * myx, const eqm * e)
   COPY_SUBVECTOR_LOG(myx+nx,e->py_t[t],NC*NS);
   nx=nx+NC*NS;
 
-  COPY_SUBVECTOR_LOG_PLUS_ONE(myx+nx,e->c_t[t],NC*NS);
-  nx=nx+NC*NS;
+  COPY_SUBVECTOR_LOG(myx+nx,e->c_t[t],NC*(NS-1));
+  nx=nx+NC*(NS-1);
 
   if(nx != nbgp)
     {
@@ -292,7 +292,7 @@ uint unstack_bgp_vars(eqm * e, const double * myx)
   uint nx = 0;
   uint t = NT;
 
-  copy_subvector_exp( (double *)(e->w_t[t]), myx+nx, NC);
+  COPY_SUBVECTOR_EXP(e->w_t[t], myx+nx, NC);
   nx=nx+NC;
 
   COPY_SUBVECTOR_EXP(e->k_t[t],myx+nx,NC*NS);
@@ -304,8 +304,8 @@ uint unstack_bgp_vars(eqm * e, const double * myx)
   COPY_SUBVECTOR_EXP(e->py_t[t],myx+nx,NC*NS);
   nx=nx+NC*NS;
 
-  COPY_SUBVECTOR_EXP_MINUS_ONE(e->c_t[t],myx+nx,NC*NS);
-  nx=nx+NC*NS;
+  COPY_SUBVECTOR_EXP(e->c_t[t],myx+nx,NC*(NS-1));
+  nx=nx+NC*(NS-1);
 
   if(nx != nbgp)
     {
@@ -340,8 +340,8 @@ uint stack_eqm_vars(double * myx, const eqm * e)
   COPY_SUBVECTOR_LOG(myx+nx,&(e->py_t[t0]),(nn)*NC*NS);
   nx = nx + (nn)*NC*NS;
 
-  COPY_SUBVECTOR_LOG_PLUS_ONE(myx+nx,&(e->c_t[t0]),(nn)*NC*NS);
-  nx = nx + (nn)*NC*NS;
+  COPY_SUBVECTOR_LOG(myx+nx,&(e->c_t[t0]),(nn)*NC*(NS-1));
+  nx = nx + (nn)*NC*(NS-1);
 
   uint i = 0;
   uint t = 0;
@@ -359,20 +359,20 @@ uint stack_eqm_vars(double * myx, const eqm * e)
 
   if(f_adj_cost)
     {
-      COPY_SUBVECTOR_LOG_PLUS_ONE(myx+nx,&(e->q2_t[t0]),(nn-1)*NC*NS*NC);
-      nx = nx + (nn-1)*NC*NS*NC;
+      COPY_SUBVECTOR_LOG(myx+nx,&(e->q2_t[t0]),(nn-1)*NC*(NS-1)*NC);
+      nx = nx + (nn-1)*NC*(NS-1)*NC;
 
-      COPY_SUBVECTOR_LOG(myx+nx,&(e->p_t[t0]),(nn-1)*NC*NS);
-      nx = nx + (nn-1)*NC*NS;
+      COPY_SUBVECTOR_LOG(myx+nx,&(e->p_t[t0]),(nn-1)*NC*(NS-1));
+      nx = nx + (nn-1)*NC*(NS-1);
     }
 
   if(m_adj_cost)
     {
-      COPY_SUBVECTOR_LOG_PLUS_ONE(myx+nx,&(e->m2_t[t0]),(nn-1)*NC*NS*NC);
-      nx = nx + (nn-1)*NC*NS*NC;
+      COPY_SUBVECTOR_LOG(myx+nx,&(e->m2_t[t0]),(nn-1)*NC*(NS-1)*NC);
+      nx = nx + (nn-1)*NC*(NS-1)*NC;
       
-      COPY_SUBVECTOR_LOG(myx+nx,&(e->pm_t[t0]),(nn-1)*NC*NS);
-      nx = nx + (nn-1)*NC*NS;
+      COPY_SUBVECTOR_LOG(myx+nx,&(e->pm_t[t0]),(nn-1)*NC*(NS-1));
+      nx = nx + (nn-1)*NC*(NS-1);
     }
 
   if(nx != neqm)
@@ -408,8 +408,8 @@ uint unstack_eqm_vars(eqm * e, const double * myx)
   COPY_SUBVECTOR_EXP(&(e->py_t[t0]),myx+nx,(nn)*NC*NS);
   nx = nx + (nn)*NC*NS;
 
-  COPY_SUBVECTOR_EXP_MINUS_ONE(&(e->c_t[t0]),myx+nx,(nn)*NC*NS);
-  nx = nx + (nn)*NC*NS;
+  COPY_SUBVECTOR_EXP(&(e->c_t[t0]),myx+nx,(nn)*NC*(NS-1));
+  nx = nx + (nn)*NC*(NS-1);
 
   uint i = 0;
   uint t = 0;
@@ -427,20 +427,20 @@ uint unstack_eqm_vars(eqm * e, const double * myx)
 
   if(f_adj_cost)
     {
-      COPY_SUBVECTOR_EXP_MINUS_ONE(&(e->q2_t[t0]),myx+nx,(nn-1)*NC*NS*NC);
-      nx = nx + (nn-1)*NC*NS*NC;
+      COPY_SUBVECTOR_EXP(&(e->q2_t[t0]),myx+nx,(nn-1)*NC*(NS-1)*NC);
+      nx = nx + (nn-1)*NC*(NS-1)*NC;
 
-      COPY_SUBVECTOR_EXP(&(e->p_t[t0]),myx+nx,(nn-1)*NC*NS);
-      nx = nx + (nn-1)*NC*NS;
+      COPY_SUBVECTOR_EXP(&(e->p_t[t0]),myx+nx,(nn-1)*NC*(NS-1));
+      nx = nx + (nn-1)*NC*(NS-1);
     }
 
   if(m_adj_cost)
     {
-      COPY_SUBVECTOR_EXP_MINUS_ONE(&(e->m2_t[t0]),myx+nx,(nn-1)*NC*NS*NC);
-      nx = nx + (nn-1)*NC*NS*NC;
+      COPY_SUBVECTOR_EXP(&(e->m2_t[t0]),myx+nx,(nn-1)*NC*(NS-1)*NC);
+      nx = nx + (nn-1)*NC*(NS-1)*NC;
       
-      COPY_SUBVECTOR_EXP(&(e->pm_t[t0]),myx+nx,(nn-1)*NC*NS);
-      nx = nx + (nn-1)*NC*NS;
+      COPY_SUBVECTOR_EXP(&(e->pm_t[t0]),myx+nx,(nn-1)*NC*(NS-1));
+      nx = nx + (nn-1)*NC*(NS-1);
     }
 
   if(nx != neqm)
@@ -501,7 +501,7 @@ uint set_initial_eqm_guess()
     {
       fprintf(logfile, "Error solving for steady state!\n");
       return 1;
-    }
+    }  
   free_solver_mem();
   solver_n = neqm;
   alloc_solver_mem();
@@ -548,14 +548,14 @@ uint set_initial_eqm_guess()
   SET_ALL_V(tmpp2,NC*NS,1.0);
 
   LOGSPACE_2D(p->k0,e->k_t[NT],NT+1,NC*NS,e->k_t);
-  LOGSPACE_2D(p->l0,e->l_t[NT],NT+1,NC*NS,e->l_t);
-  LOGSPACE_2D(p->c0,e->c_t[NT],NT+1,NC*NS,e->c_t);
-  LOGSPACE_2D(p->q0,e->q_t[NT],NT+1,NC*NS,e->q_t);
-  LOGSPACE_2D(p->m0,e->m_t[NT],NT+1,NC*NS,e->m_t);
+  LOGSPACE_2D(p->l0,e->l_t[NT],NT+1,NC*NS,e->l_t);  
+  LOGSPACE_2D(p->c0,e->c_t[NT],NT+1,NC*(NS-1),e->c_t);
+  LOGSPACE_2D(p->q0,e->q_t[NT],NT+1,NC*(NS-1),e->q_t);  
+  LOGSPACE_2D(p->m0,e->m_t[NT],NT+1,NC*(NS-1),e->m_t);
   LINSPACE_2D(tmpp,e->w_t[NT],NT+1,NC,e->w_t);
   LINSPACE_2D(tmpp2,e->py_t[NT],NT+1,NC*NS,e->py_t);
-  LINSPACE_2D(tmpp2,e->p_t[NT],NT+1,NC*NS,e->p_t);
-  LINSPACE_2D(tmpp2,e->pm_t[NT],NT+1,NC*NS,e->pm_t);
+  LINSPACE_2D(tmpp2,e->p_t[NT],NT+1,NC*(NS-1),e->p_t);
+  LINSPACE_2D(tmpp2,e->pm_t[NT],NT+1,NC*(NS-1),e->pm_t);
 
   for(i=0; i<NC; i++)
     {
@@ -572,7 +572,7 @@ uint set_initial_eqm_guess()
     {
       for(i=0; i<NC; i++)
 	{
-	  for(s=0; s<NS; s++)
+	  for(s=0; s<NS-1; s++)
 	    {
 	      for(j=0; j<NC; j++)
 		{
@@ -601,7 +601,8 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 
   if(scenario==1)
     {
-      sprintf(fname2,"output/%s_s%d_c%d_d%d_a%d.csv",fname,target_sector_flag,target_country_flag,duration_flag,adjustment_flag);
+      sprintf(fname2,"output/%s_t%d_s%d_c%d_r%d_d%d_a%d.csv",
+	      fname,(int)(tariff*100),target_sector_flag,target_country_flag,retaliation_flag,duration_flag,adjustment_flag);
     }
   else
     {
@@ -614,10 +615,10 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
   if(file)
     {
       uint s,j,t;
-      fprintf(file,"period,rgdp,ngdp,ii,ll,c,W,ae,te");
+      fprintf(file,"period,rgdp,ngdp,ii,ll,c,w,ae,te");
       for(s=0;s<NS;s++)
 	{
-	  fprintf(file,",y%d,va%d,i%d,c%d,l%d,py%d,ae%d,te%d",s,s,s,s,s,s,s,s);
+	  fprintf(file,",y%d,va%d,lp%d,i%d,c%d,k%d,l%d,py%d,ae%d,te%d",s,s,s,s,s,s,s,s,s,s);
 	}
       for(j=0; j<NC; j++)
 	{
@@ -625,10 +626,11 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 	    {
 	      fprintf(file,",rer%d,ex%d,im%d,nx%d,rex%d,rim%d",
 		      j,j,j,j,j,j);
-	      for(s=0;s<NS;s++)
+	      for(s=0;s<NS-1;s++)
 		{
 		  fprintf(file,
-			  ",taus%d-%d,exs%d-%d,ims%d-%d,nxs%d-%d,rexs%d-%d,rims%d-%d,exsm%d-%d,exsf%d-%d,imsm%d-%d,imsf%d-%d,aes%d-%d,tes%d-%d",s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j);
+			  ",taus%d-%d,exs%d-%d,ims%d-%d,nxs%d-%d,rexs%d-%d,rims%d-%d,exsm%d-%d,exsf%d-%d,imsm%d-%d,imsf%d-%d,aes%d-%d,tes%d-%d",
+			  s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j,s,j);
 		}
 	    }
 	}
@@ -642,20 +644,22 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 	  fprintf(file,"%0.16f,",e->ii_t[t][i]);
 	  fprintf(file,"%0.16f,",e->ll_t[t][i]);
 	  fprintf(file,"%0.16f,",e->cc_t[t][i]);
-	  fprintf(file,"%0.16f,",e->welfare_t[t][i]);
+	  fprintf(file,"%0.16f,",e->w_t[t][i]);
 	  fprintf(file,"%0.16f,",e->ae_t[t][i]);
 	  fprintf(file,"%0.16f",e->te_t[t][i]);
 	  for(s=0; s<NS; s++)
 	    {
 	      fprintf(file,",%0.16f,",e->y_t[t][i][s]);
-	      fprintf(file,"%0.16f,",e->va_t[t][i][s]);
+	      fprintf(file,"%0.16f,",e->rva_t[t][i][s]);
+	      fprintf(file,"%0.16f,",e->lp_t[t][i][s]);
 	      fprintf(file,"%0.16f,",e->is_t[t][i][s]);
 
 	      if(s!=CNS)
 		fprintf(file,"%0.16f,",e->c_t[t][i][s]);
 	      else
 		fprintf(file,"%0.16f,",0.0);
-	      
+
+	      fprintf(file,"%0.16f,",e->k_t[t][i][s]);
 	      fprintf(file,"%0.16f,",e->l_t[t][i][s]);
 	      fprintf(file,"%0.16f,",e->py_t[t][i][s]);
 	      fprintf(file,"%0.16f,",e->aes_t[t][i][s]);
@@ -671,7 +675,7 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 		  fprintf(file,"%0.16f,",e->nx_t[t][i][j]);
 		  fprintf(file,"%0.16f,",e->rex_t[t][i][j]);
 		  fprintf(file,"%0.16f",e->rim_t[t][i][j]);
-		  for(s=0; s<NS; s++)
+		  for(s=0; s<NS-1; s++)
 		    {
 		      fprintf(file,",%0.16f,",p->tau_m_ts[t][i][s][j]);
 		      fprintf(file,"%0.16f,",e->exs_t[t][i][s][j]);
@@ -684,8 +688,8 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 		      fprintf(file,"%0.16f,",e->m2_t[t][i][s][j]*e->py_t[t][j][s]);
 		      fprintf(file,"%0.16f,",e->q2_t[t][i][s][j]*e->py_t[t][j][s]);
 		      fprintf(file,"%0.16f,",e->aes2_t[t][i][s][j]);
-		      fprintf(file,"%0.16f,",e->tes2_t[t][i][s][j]);
-			    }
+		      fprintf(file,"%0.16f",e->tes2_t[t][i][s][j]);
+		    }
 		}
 	    }
 	  fprintf(file,"\n");
@@ -716,17 +720,17 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
   SET_ALL_V(e->exm_t[t],NC*NC,0.0);
   SET_ALL_V(e->imm_t[t],NC*NC,0.0);
   SET_ALL_V(e->nxm_t[t],NC*NC,0.0);
-  SET_ALL_V(e->exs_t[t],NC*NS*NC,0.0);
-  SET_ALL_V(e->ims_t[t],NC*NS*NC,0.0);
-  SET_ALL_V(e->nxs_t[t],NC*NS*NC,0.0);
+  SET_ALL_V(e->exs_t[t],NC*(NS-1)*NC,0.0);
+  SET_ALL_V(e->ims_t[t],NC*(NS-1)*NC,0.0);
+  SET_ALL_V(e->nxs_t[t],NC*(NS-1)*NC,0.0);
   SET_ALL_V(e->rex_t[t],NC*NC,0.0);
   SET_ALL_V(e->rim_t[t],NC*NC,0.0);
   SET_ALL_V(e->rexf_t[t],NC*NC,0.0);
   SET_ALL_V(e->rimf_t[t],NC*NC,0.0);
   SET_ALL_V(e->rexm_t[t],NC*NC,0.0);
   SET_ALL_V(e->rimm_t[t],NC*NC,0.0);
-  SET_ALL_V(e->rexs_t[t],NC*NS*NC,0.0);
-  SET_ALL_V(e->rims_t[t],NC*NS*NC,0.0);
+  SET_ALL_V(e->rexs_t[t],NC*(NS-1)*NC,0.0);
+  SET_ALL_V(e->rims_t[t],NC*(NS-1)*NC,0.0);
 
   // bond market clearing
   e->b_t[t][2] = -(e->b_t[t][0]+e->b_t[t][1]);
@@ -760,15 +764,16 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 
 	  e->ngdp_t[t][i] = e->ngdp_t[t][i] + e->py_t[t][i][s]*e->y_t[t][i][s];
 	  e->rgdp_t[t][i] = e->rgdp_t[t][i] + e->y_t[t][i][s];
-	  e->lp_t[t][i][s] = e->va_t[t][i][s]/e->l_t[t][i][s];
+	  e->rva_t[t][i][s] = e->y_t[t][i][s];
+	  
 
-	  for(r=0; r<NS; r++)
+	  for(r=0; r<NS-1; r++)
 	    {
-	      if(r!=CNS)
-		e->md_t[t][i][s][r] = e->y_t[t][i][s]*p->lam[i][s][r];
-	      else
-		e->md_t[t][i][s][r] = 0.0;
+	      e->md_t[t][i][s][r] = e->y_t[t][i][s]*p->lam[i][s][r];
+	      e->rva_t[t][t][s] -= e->md_t[t][i][s][r];
 	    }
+
+	  e->lp_t[t][i][s] = e->rva_t[t][i][s]/e->l_t[t][i][s];
 	}
 
       e->ll_t[t][i] = SUM(e->l_t[t][i], NS);
@@ -805,51 +810,38 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
       // Armington composite prices
       if(!m_adj_cost || t==NT)
 	{
-	  for(s=0; s<NS; s++)
+	  for(s=0; s<NS-1; s++)
 	    {
-	      if(s==CNS)
+	      e->pm_t[t][i][s] = 0.0;
+	      for(j=0; j<NC; j++)
 		{
-		  e->pm_t[t][i][s] = 1.0; // we set this to any arbitrary number cause it doesn't do anything
+		  double tc = 1.0+p->tau_m_ts[t][i][s][j];
+		  e->pm_t[t][i][s] = e->pm_t[t][i][s] + 
+		    pow(p->mu[i][s][j],1.0/(1.0-p->zeta[i][s])) * 
+		    pow(tc*e->py_t[t][j][s],p->zeta[i][s]/(p->zeta[i][s]-1.0));
 		}
-	      else
-		{
-		  e->pm_t[t][i][s] = 0.0;
-		  for(j=0; j<NC; j++)
-		    {
-		      double tc = 1.0+p->tau_m_ts[t][i][s][j];
-		      e->pm_t[t][i][s] = e->pm_t[t][i][s] + 
-			pow(p->mu[i][s][j],1.0/(1.0-p->zeta[i][s])) * 
-			pow(tc*e->py_t[t][j][s],p->zeta[i][s]/(p->zeta[i][s]-1.0));
-		    }
-		  e->pm_t[t][i][s] = (1.0/p->M[i][s]) * 
-		    pow(e->pm_t[t][i][s],(p->zeta[i][s]-1.0)/p->zeta[i][s]);
-		}
+	      e->pm_t[t][i][s] = (1.0/p->M[i][s]) * 
+		pow(e->pm_t[t][i][s],(p->zeta[i][s]-1.0)/p->zeta[i][s]);
 	    }
 	}
 
       if(!f_adj_cost || t==NT)
 	{
-	  for(s=0; s<NS; s++)
+	  for(s=0; s<NS-1; s++)
 	    {
-	      if(s==CNS)
+	      e->p_t[t][i][s] = 0.0;
+	      for(j=0; j<NC; j++)
 		{
-		  e->p_t[t][i][s] = e->py_t[t][i][s];
+		  double tc = 1.0+p->tau_f_ts[t][i][s][j];
+		  e->p_t[t][i][s] = e->p_t[t][i][s] + 
+		    pow(p->theta[i][s][j],1.0/(1.0-p->sig[i][s])) * 
+		    pow(tc*e->py_t[t][j][s],p->sig[i][s]/(p->sig[i][s]-1.0));
 		}
-	      else
-		{
-		  e->p_t[t][i][s] = 0.0;
-		  for(j=0; j<NC; j++)
-		    {
-		      double tc = 1.0+p->tau_f_ts[t][i][s][j];
-		      e->p_t[t][i][s] = e->p_t[t][i][s] + 
-			pow(p->theta[i][s][j],1.0/(1.0-p->sig[i][s])) * 
-			pow(tc*e->py_t[t][j][s],p->sig[i][s]/(p->sig[i][s]-1.0));
-		    }
-		  e->p_t[t][i][s] = (1.0/p->H[i][s]) * 
-		    pow(e->p_t[t][i][s],(p->sig[i][s]-1.0)/p->sig[i][s]);
-		}
+	      e->p_t[t][i][s] = (1.0/p->H[i][s]) * 
+		pow(e->p_t[t][i][s],(p->sig[i][s]-1.0)/p->sig[i][s]);
 	    }
 	}
+      double pt_cns = e->py_t[t][i][CNS];
 
       // households' stochastic discount factor for dynamic firm's problem with adjustment costs
       if(t>0)
@@ -882,41 +874,27 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 
       // investment price
       e->pi_t[t][i] = 1.0/p->G[i];
-      for(s=1;s<NS; s++)
+      for(s=0;s<NS-1; s++)
 	{
 	  e->pi_t[t][i] = e->pi_t[t][i] * pow(e->p_t[t][i][s]/p->eps[i][1][s],p->eps[i][1][s]);
 	}
+      e->pi_t[t][i] = e->pi_t[t][i] * pow(pt_cns/p->eps[i][1][s],p->eps[i][1][s]);
 
-      // demand for final goods and intermediates
-      for(s=0; s<NS; s++)
+      // demand for final goods and intermediates other than construction
+      for(s=0; s<NS-1; s++)
 	{
 	  e->i_t[t][i][s] = e->pi_t[t][i] * p->eps[i][1][s] * e->ii_t[t][i]/e->p_t[t][i][s];
-	  e->q_t[t][i][s] = s!=CNS ? e->c_t[t][i][s] + e->i_t[t][i][s] : e->i_t[t][i][s];
+	  e->q_t[t][i][s] = e->c_t[t][i][s] + e->i_t[t][i][s];
+	  e->m_t[t][i][s] = e->md_t[t][i][UPS][s] + e->md_t[t][i][DNS][s] + e->md_t[t][i][SVC][s] + e->md_t[t][i][CNS][s];
 
-	  if(s!=CNS)
-	    e->m_t[t][i][s] = e->md_t[t][i][UPS][s] + e->md_t[t][i][DNS][s] + e->md_t[t][i][SVC][s] + e->md_t[t][i][CNS][s];
-	  else
-	    e->m_t[t][i][s] = 0.0;
-
-	  // no construction intermediates
-	  if(s==CNS)
+	  if(!m_adj_cost || t==NT)
 	    {
 	      for(j=0; j<NC; j++)
 		{
-		  e->m2_t[t][i][s][j] = 0.0;
-		}
-	    }
-	  else
-	    {
-	      if(!m_adj_cost || t==NT)
-		{
-		  for(j=0; j<NC; j++)
-		    {
-		      double tc = 1.0+p->tau_m_ts[t][i][s][j];
-		      e->m2_t[t][i][s][j] = e->m_t[t][i][s] * 
-			pow(tc*e->py_t[t][j][s],1.0/(p->zeta[i][s]-1.0)) * 
-			pow(e->pm_t[t][i][s]*p->mu[i][s][j]*pow(p->M[i][s],p->zeta[i][s]),1.0/(1.0-p->zeta[i][s]));
-		    }
+		  double tc = 1.0+p->tau_m_ts[t][i][s][j];
+		  e->m2_t[t][i][s][j] = e->m_t[t][i][s] * 
+		    pow(tc*e->py_t[t][j][s],1.0/(p->zeta[i][s]-1.0)) * 
+		    pow(e->pm_t[t][i][s]*p->mu[i][s][j]*pow(p->M[i][s],p->zeta[i][s]),1.0/(1.0-p->zeta[i][s]));
 		}
 	    }
 	  
@@ -924,21 +902,16 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 	    {
 	      for(j=0; j<NC; j++)
 		{
-		  if(s==CNS)
-		    {
-		      e->q2_t[t][i][s][i] = (i==j ? e->q_t[t][i][s] : 0.0); // no trade in construction
-		    }
-		  else
-		    {
-		      double tc = 1.0+p->tau_f_ts[t][i][s][j];
-		      e->q2_t[t][i][s][j] = e->q_t[t][i][s] * 
-			pow(tc*e->py_t[t][j][s],1.0/(p->sig[i][s]-1.0)) * 
-			pow(e->p_t[t][i][s]*p->theta[i][s][j]*pow(p->H[i][s],p->sig[i][s]),1.0/(1.0-p->sig[i][s]));
-		    }
-		 
+		  double tc = 1.0+p->tau_f_ts[t][i][s][j];
+		  e->q2_t[t][i][s][j] = e->q_t[t][i][s] * 
+		    pow(tc*e->py_t[t][j][s],1.0/(p->sig[i][s]-1.0)) * 
+		    pow(e->p_t[t][i][s]*p->theta[i][s][j]*pow(p->H[i][s],p->sig[i][s]),1.0/(1.0-p->sig[i][s]));		 
 		}
 	    }
 	}
+
+      // construction investment demand
+      e->i_t[t][i][CNS] = e->pi_t[t][i] * p->eps[i][1][s] * e->ii_t[t][i]/pt_cns;
 
       e->cpi_t[t][i] = 0.0;
       e->cc_t[t][i] = 0.0;
@@ -991,7 +964,7 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 	  if(j!=i)
 	    {
 	      e->rer_t[t][i][j] = e->cpi_t[t][j]/e->cpi_t[t][i];
-	      for(s=0; s<NS; s++)
+	      for(s=0; s<NS-1; s++)
 		{
 		  double m = e->py_t[t][i][s]*e->m2_t[t][j][s][i];
 		  double f = e->py_t[t][i][s]*e->q2_t[t][j][s][i];
@@ -1197,7 +1170,7 @@ uint eval_bgp_conds(const double * myx, double * myf, uint tn)
 
 	  nx=nx+1;
 	  
-	  if(s!=SVC)
+	  if(s!=SVC && s!=CNS)
 	    {
 	      myf[nx] = mucs_mucr(p,e,t,i,s,SVC);
 	      if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
@@ -1301,7 +1274,7 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
       myf[nx] = price_norm(e,t);
       if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 	{
-	  fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\n Price norm %d\n",t);
+	  fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\n Price norm %d\n",t);
 	  return 1;
 	}
       nx=nx+1;
@@ -1311,7 +1284,7 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 	  myf[nx] = bop(p,e,t,i);
 	  if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 	    {
-	      fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nBop %d %d\n",t,i);
+	      fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nBop %d %d\n",t,i);
 	      return 1;
 	    }
 	  nx = nx+1;
@@ -1322,7 +1295,7 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 	  myf[nx] = muc_mul(p,e,t,i);
 	  if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 	    {
-	      fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nMuc-Mul %d %d\n",t,i);
+	      fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nMuc-Mul %d %d\n",t,i);
 	      return 1;
 	    }
 	  nx=nx+1;
@@ -1332,7 +1305,7 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 	      myf[nx] = euler(p,e,t,i);
 	      if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 		{
-		  fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nEuler %d %d\n",t,i);
+		  fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nEuler %d %d\n",t,i);
 		  return 1;
 		}
 	      nx = nx+1;	       
@@ -1340,12 +1313,12 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 
 	  for(s=0; s<NS; s++)
 	    {
-	      if(s!= SVC)
+	      if(s!= SVC && s!=CNS)
 		{
 		  myf[nx] = mucs_mucr(p,e,t,i,s,SVC);
 		  if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 		    {
-		      fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nMucs-Mucr %d %d %d\n",t,i,s);
+		      fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nMucs-Mucr %d %d %d\n",t,i,s);
 		      return 1;
 		    }
 		  nx=nx+1;
@@ -1356,7 +1329,7 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 		  myf[nx] = mpk_rk(p,e,t+1,i,s);
 		  if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 		    {
-		      fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nMPK = Rk %d %d %d\n",t,i,s);
+		      fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nMPK = Rk %d %d %d\n",t,i,s);
 		      return 1;
 		    }
 		  nx=nx+1;
@@ -1365,7 +1338,7 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 	      myf[nx] = mpl_w(p,e,t,i,s);
 	      if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 		{
-		  fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nMPK = Rk %d %d %d\n",t,i,s);
+		  fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nMPK = Rk %d %d %d\n",t,i,s);
 		  return 1;
 		}
 	      nx=nx+1;
@@ -1373,19 +1346,19 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 	      myf[nx] = mkt_clear_y(p,e,t,i,s);
 	      if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 		{
-		  fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nMPK = Mkt clearing for y %d %d %d\n",t,i,s);
+		  fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nMPK = Mkt clearing for y %d %d %d\n",t,i,s);
 		  return 1;
 		}
 	      nx=nx+1;
 
 	      if(m_adj_cost && t<NT)
 		{
-		  for(s=0; s<NS; s++)
+		  if(s!=CNS)
 		    {
 		      myf[nx] = prod_m_chk(p,e,t,i,s);
 		      if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 			{
-			  fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nMPK = Prod m chk %d %d %d\n",t,i,s);
+			  fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nMPK = Prod m chk %d %d %d\n",t,i,s);
 			  return 1;
 			}			  
 		      nx = nx+1;
@@ -1396,7 +1369,7 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 			  myf[nx] = foc_m2(p,e,t,i,s,j);
 			  if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 			    {
-			      fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nMPK = foc q2 %d %d %d\n",t,i,s);
+			      fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nMPK = foc q2 %d %d %d\n",t,i,s);
 			      return 1;
 			    }		  
 			  nx = nx+1;
@@ -1406,12 +1379,12 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 		  
 	      if(f_adj_cost && t<NT)
 		{
-		  for(s=0; s<NS; s++)
+		  if(s!=CNS)
 		    {
 		      myf[nx] = prod_q_chk(p,e,t,i,s);
 		      if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 			{
-			  fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nMPK = Prod q chk %d %d %d\n",t,i,s);
+			  fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nMPK = Prod q chk %d %d %d\n",t,i,s);
 			  return 1;
 			}			  
 		      nx = nx+1;
@@ -1422,7 +1395,7 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 			  myf[nx] = foc_q2(p,e,t,i,s,j);
 			  if(gsl_isnan(myf[nx]) || gsl_isinf(myf[nx]))
 			    {
-			      fprintf(logfile,"Error evaluating bgp eqns! NaN/Inf detected!\nMPK = foc q2 %d %d %d\n",t,i,s);
+			      fprintf(logfile,"Error evaluating eqm eqns! NaN/Inf detected!\nMPK = foc q2 %d %d %d\n",t,i,s);
 			      return 1;
 			    }			  
 			  nx = nx+1;

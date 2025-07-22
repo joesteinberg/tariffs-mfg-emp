@@ -3,31 +3,22 @@
 
 #include "calibrate.h"
 
-double export_participation_rate_target[NC][NS][NC-1];
-double exit_rate_target[NC][NS][NC-1];
-double exit_rate_target2[NC][NS][NC-1];
-double ratio_target[NC][NS];
-double tau_k_tmp[NC];
-double sig_z_tmp[NC][NS];
-
-uint homotopy_times = 15;
-
 uint copy_params(params * dest, const params * src)
 {
   dest->rho = src->rho;
   memcpy((double *)(dest->eps),(const double *)(src->eps),sizeof(double)*NC*NF*NS);
   memcpy((double *)(dest->G),(const double *)(src->G),sizeof(double)*NC);
 
-  memcpy((double *)(dest->sig),(const double *)(src->sig),sizeof(double)*NC*NS);
-  memcpy((double *)(dest->theta),(const double *)(src->theta),sizeof(double)*NC*NS*NC);
-  memcpy((double *)(dest->H),(const double *)(src->H),sizeof(double)*NC*NS);
+  memcpy((double *)(dest->sig),(const double *)(src->sig),sizeof(double)*NC*(NS-1));
+  memcpy((double *)(dest->theta),(const double *)(src->theta),sizeof(double)*NC*(NS-1)*NC);
+  memcpy((double *)(dest->H),(const double *)(src->H),sizeof(double)*NC*(NS-1));
 
-  memcpy((double *)(dest->zeta),(const double *)(src->zeta),sizeof(double)*NC*NS);
-  memcpy((double *)(dest->mu),(const double *)(src->mu),sizeof(double)*NC*NS*NC);
-  memcpy((double *)(dest->M),(const double *)(src->M),sizeof(double)*NC*NS);
+  memcpy((double *)(dest->zeta),(const double *)(src->zeta),sizeof(double)*NC*(NS-1));
+  memcpy((double *)(dest->mu),(const double *)(src->mu),sizeof(double)*NC*(NS-1)*NC);
+  memcpy((double *)(dest->M),(const double *)(src->M),sizeof(double)*NC*(NS-1));
   
   memcpy((double *)(dest->lam_va),(const double *)(src->lam_va),sizeof(double)*NC*NS);
-  memcpy((double *)(dest->lam),(const double *)(src->lam),sizeof(double)*NC*NS*NS);
+  memcpy((double *)(dest->lam),(const double *)(src->lam),sizeof(double)*NC*NS*(NS-1));
   memcpy((double *)(dest->B),(const double *)(src->B),sizeof(double)*NC*NS);
   memcpy((double *)(dest->alpha),(const double *)(src->alpha),sizeof(double)*NC*NS);
   memcpy((double *)(dest->A),(const double *)(src->A),sizeof(double)*NC*NS);
@@ -54,18 +45,18 @@ uint copy_params(params * dest, const params * src)
   memcpy((double *)(dest->va0),(const double *)(src->va0),sizeof(double)*NC*NS);
   memcpy((double *)(dest->k0),(const double *)(src->k0),sizeof(double)*NC*NS);
   memcpy((double *)(dest->l0),(const double *)(src->l0),sizeof(double)*NC*NS);
-  memcpy((double *)(dest->md0),(const double *)(src->md0),sizeof(double)*NC*NS*NS);
+  memcpy((double *)(dest->md0),(const double *)(src->md0),sizeof(double)*NC*NS*(NS-1));
   memcpy((double *)(dest->ex0),(const double *)(src->ex0),sizeof(double)*NC*NC);
   memcpy((double *)(dest->im0),(const double *)(src->im0),sizeof(double)*NC*NC);
   memcpy((double *)(dest->nx0),(const double *)(src->nx0),sizeof(double)*NC*NC);
-  memcpy((double *)(dest->c0),(const double *)(src->c0),sizeof(double)*NC*NS);
+  memcpy((double *)(dest->c0),(const double *)(src->c0),sizeof(double)*NC*(NS-1));
   memcpy((double *)(dest->i0),(const double *)(src->i0),sizeof(double)*NC*NS);
-  memcpy((double *)(dest->m0),(const double *)(src->m0),sizeof(double)*NC*NS);
-  memcpy((double *)(dest->m02),(const double *)(src->m02),sizeof(double)*NC*NS*NC);
-  memcpy((double *)(dest->q0),(const double *)(src->q0),sizeof(double)*NC*NS);
-  memcpy((double *)(dest->q02),(const double *)(src->q02),sizeof(double)*NC*NS*NC);
-  memcpy((double *)(dest->im02),(const double *)(src->im02),sizeof(double)*NC*NS*NC);
-  memcpy((double *)(dest->ex02),(const double *)(src->ex02),sizeof(double)*NC*NS*NC);
+  memcpy((double *)(dest->m0),(const double *)(src->m0),sizeof(double)*NC*(NS-1));
+  memcpy((double *)(dest->m02),(const double *)(src->m02),sizeof(double)*NC*(NS-1)*NC);
+  memcpy((double *)(dest->q0),(const double *)(src->q0),sizeof(double)*NC*(NS-1));
+  memcpy((double *)(dest->q02),(const double *)(src->q02),sizeof(double)*NC*(NS-1)*NC);
+  memcpy((double *)(dest->im02),(const double *)(src->im02),sizeof(double)*NC*(NS-1)*NC);
+  memcpy((double *)(dest->ex02),(const double *)(src->ex02),sizeof(double)*NC*(NS-1)*NC);
 
   dest->etaM = src->etaM;
   dest->etaF = src->etaF;
@@ -87,7 +78,7 @@ uint set_nontargeted_params(params * p)
     }
   else
     {
-      p->etaK = 6.6;
+      p->etaK = 0.52;
     }
   if(l_adj_cost==0)
     {
@@ -103,7 +94,7 @@ uint set_nontargeted_params(params * p)
     }
   else
     {
-      p->etaF = 1.0;
+      p->etaF = 2.9;
     }
   if(m_adj_cost==0)
     {
@@ -111,7 +102,7 @@ uint set_nontargeted_params(params * p)
     }
   else
     {
-      p->etaM = 3.5;
+      p->etaM = 2.9;
     }
   
   if(cobb_douglas_flag2)
@@ -142,13 +133,6 @@ uint set_nontargeted_params(params * p)
       
       p->zeta[i][2] = 1.0-1.0/4.0;
       p->sig[i][2] = 1.0-1.0/4.0;
-      
-      p->zeta[i][3] = 1.0-1.0/4.0;
-      p->sig[i][3] = 1.0-1.0/4.0;
-
-      p->zeta[i][3] = 1.0-1.0/0.0;
-      p->sig[i][3] = 1.0-1.0/0.0;
-
     }     
 
   return 0;
@@ -205,7 +189,7 @@ void load_ts_params(params * p)
 }
 
 
-void set_tariffs(params * p, double tau, uint scenario)
+void set_tariffs(params * p, uint scenario)
 {
   SET_ALL_V(p->tau_m_ts,(NT+1)*NC*NS*NC,0.0);
   SET_ALL_V(p->tau_f_ts,(NT+1)*NC*NS*NC,0.0);
@@ -218,7 +202,7 @@ void set_tariffs(params * p, double tau, uint scenario)
 	{
 	  for(s=0; s<NS-2; s++) // don't include services or construction
 	    {
-	      double x = tau;
+	      double x = tariff;
 
 	      // temporary tariffs turn off after 4 years
 	      if(duration_flag==1 && t>=4)
@@ -272,15 +256,15 @@ uint store_base_period_values(params * p)
   SET_ALL_V(p->va0,NC*NS,0.0);
   SET_ALL_V(p->k0,NC*NS,0.0);
   SET_ALL_V(p->l0,NC*NS,0.0);
-  SET_ALL_V(p->md0,NC*NS*NS,0.0);
-  SET_ALL_V(p->m0,NC*NS,0.0);
-  SET_ALL_V(p->m02,NC*NS*NC,0.0);
-  SET_ALL_V(p->q0,NC*NS,0.0);
-  SET_ALL_V(p->q02,NC*NS*NC,0.0);
-  SET_ALL_V(p->ex0,NC*NC,0.0);
-  SET_ALL_V(p->im0,NC*NC,0.0);
-  SET_ALL_V(p->nx0,NC*NC,0.0);
-  SET_ALL_V(p->c0,NC*NS,0.0);
+  SET_ALL_V(p->md0,NC*NS*(NS-1),0.0);
+  SET_ALL_V(p->m0,NC*(NS-1),0.0);
+  SET_ALL_V(p->m02,NC*(NS-1)*NC,0.0);
+  SET_ALL_V(p->q0,NC*(NS-1),0.0);
+  SET_ALL_V(p->q02,NC*(NS-1)*NC,0.0);
+  SET_ALL_V(p->ex0,NC*(NS-1)*NC,0.0);
+  SET_ALL_V(p->im0,NC*(NS-1)*NC,0.0);
+  SET_ALL_V(p->nx0,NC*(NS-1)*NC,0.0);
+  SET_ALL_V(p->c0,NC*(NS-1),0.0);
   SET_ALL_V(p->i0,NC*NS,0.0);
   SET_ALL_V(p->ii0,NC,0.0);
 
@@ -310,20 +294,32 @@ uint store_base_period_values(params * p)
 	  // now get demand for products from different source countries and sectors 
 	  for(j=0; j<NC; j++)
 	    {
-	      p->c0[i][s] = p->c0[i][s] + p->iomat[j*NS+s][ccol];
 	      p->i0[i][s] = p->i0[i][s] + p->iomat[j*NS+s][icol];
-	      p->q02[i][s][j] = p->iomat[j*NS+s][ccol] + p->iomat[j*NS+s][icol];
+	      
+	      if(s!=CNS)
+		{
+		  p->c0[i][s] = p->c0[i][s] + p->iomat[j*NS+s][ccol];
+		  p->q02[i][s][j] = p->iomat[j*NS+s][ccol] + p->iomat[j*NS+s][icol];
+		}
 
 	      for(r=0; r<NS; r++)
 		{
 		  uint rcol = i*NS + r;
-		  p->m02[i][s][j] = p->m02[i][s][j] + p->iomat[j*NS+s][rcol];
-		  p->md0[i][r][s] = p->md0[i][r][s] + p->iomat[j*NS+s][rcol];
-		  p->md0_[i][r][s] = p->md0_[i][r][s] + p->iomat[j*NS+s][rcol];
+
+		  if(s!=CNS)
+		    {
+		      p->m02[i][s][j] = p->m02[i][s][j] + p->iomat[j*NS+s][rcol];
+		      p->md0[i][r][s] = p->md0[i][r][s] + p->iomat[j*NS+s][rcol];
+		      p->md0_[i][r][s] = p->md0_[i][r][s] + p->iomat[j*NS+s][rcol];
+		    }
 		}
 	    }
-	  p->q0[i][s] = sum(p->q02[i][s],NC);
-	  p->m0[i][s] = sum(p->m02[i][s],NC);
+
+	  if(s!=CNS)
+	    {
+	      p->q0[i][s] = sum(p->q02[i][s],NC);
+	      p->m0[i][s] = sum(p->m02[i][s],NC);
+	    }
 
 	}
 
@@ -349,7 +345,7 @@ uint store_base_period_values(params * p)
     {
       for(j=0; j<NC; j++)
 	{
-	  for(s=0; s<NS; s++)
+	  for(s=0; s<NS-1; s++)
 	    {
 	      if(j != i)
 		{
@@ -366,25 +362,22 @@ uint store_base_period_values(params * p)
 	    }
 	  p->im0[i][j] = p->im02[i][0][j] + 
 	    p->im02[i][1][j] + 
-	    p->im02[i][2][j] + 
-	    p->im02[i][3][j];
+	    p->im02[i][2][j];
 	  
 	  p->ex0[i][j] = p->ex02[i][0][j] + 
 	    p->ex02[i][1][j] + 
-	    p->ex02[i][2][j] + 
-	    p->ex02[i][3][j];
+	    p->ex02[i][2][j];
 
 	  p->nx0[i][j] = p->nx02[i][0][j] + 
 	    p->nx02[i][1][j] + 
-	    p->nx02[i][2][j] + 
-	    p->nx02[i][3][j];
+	    p->nx02[i][2][j];
 	}
     }
 
   double tmp=0.0;
   for(i=0; i<NC; i++)
     {
-      tmp = (sum(p->va0[i],NS) - (sum(p->q0[i],NS) + sum(p->ex0[i],NC) - sum(p->im0[i],NC)))/sum(p->va0[i],NS);
+      tmp = (sum(p->va0[i],NS) - (sum(p->q0[i],NS-1) + p->i0[i][CNS] + sum(p->ex0[i],NC) - sum(p->im0[i],NC)))/sum(p->va0[i],NS);
       if(fabs(tmp)>mkt_clear_tol)
 	{
 	  fprintf(logfile,"GDP != C+I+NX for country %d, error = %f\n",i,tmp);
@@ -394,9 +387,16 @@ uint store_base_period_values(params * p)
       for(s=0; s<NS; s++)
 	{
 	  tmp = p->y0[i][s];
-	  for(j=0; j<NC; j++)
+	  if(s!=CNS)
 	    {
-	      tmp = tmp - p->q02[j][s][i] - p->m02[j][s][i];
+	      for(j=0; j<NC; j++)
+		{
+		  tmp = tmp - p->q02[j][s][i] - p->m02[j][s][i];
+		}
+	    }
+	  else
+	    {
+	      tmp = tmp - p->i0[i][CNS];
 	    }
 	  tmp = tmp/p->y0[i][s];
 	  if(fabs(tmp)>mkt_clear_tol)
@@ -408,18 +408,21 @@ uint store_base_period_values(params * p)
 
       for(s=0; s<NS; s++)
 	{
-	  tmp = p->y0[i][s] - (p->va0[i][s] + SUM(p->md0[i][s],NS));
+	  tmp = p->y0[i][s] - (p->va0[i][s] + SUM(p->md0[i][s],NS-1));
 	  if(fabs(tmp)>mkt_clear_tol)
 	    {
 	      fprintf(logfile,"go != va + m for country/sector %d/%d, error = %f\n",i,s,tmp);
 	      return 1;
 	    }
 
-	  tmp = p->m0[i][s] - SUM(p->m02[i][s],NC);
-	  if(fabs(tmp)>mkt_clear_tol)
+	  if(s!=CNS)
 	    {
-	      fprintf(logfile,"m != sum(m2) for country/sector %d/%d, error = %f\n",i,s,tmp);
-	      return 1;
+	      tmp = p->m0[i][s] - SUM(p->m02[i][s],NC);
+	      if(fabs(tmp)>mkt_clear_tol)
+		{
+		  fprintf(logfile,"m != sum(m2) for country/sector %d/%d, error = %f\n",i,s,tmp);
+		  return 1;
+		}
 	    }
 	}
     }
@@ -433,9 +436,10 @@ uint store_base_period_values(params * p)
   p->b0[1] = 100*chn_nfa_usdmm/usa_gdp_usdmm;
   p->b0[2] = -sum(p->b0,2);
 
-  printf("%0.4f %0.4f %0.4f\n",p->b0[0],p->b0[1],p->b0[2]);
-
-  SET_ALL_V(ratio_target,NC*NS,0.6);
+  double xx = (1.0+p->rss)/p->rss;
+  p->b0[0] = -SUM(p->nx0[0],NC) * xx;
+  p->b0[1] = -SUM(p->nx0[1],NC) * xx;
+  p->b0[2] = -sum(p->b0,2);
 
   return 0;
 
@@ -446,7 +450,7 @@ uint calibrate_prod_params(params * p)
   uint i,s,r;
   double tmp;
   
-  SET_ALL_V(p->lam,NC*NS*NS,0.0);
+  SET_ALL_V(p->lam,NC*NS*(NS-1),0.0);
   SET_ALL_V(p->A,NC*NS,0.0);
   SET_ALL_V(p->B,NC*NS,1.0);
 
@@ -493,7 +497,7 @@ uint calibrate_prod_params(params * p)
 	      return 1;
 	    }
 
-	  tmp = p->y0[i][s] - p->va0[i][s] - sum(p->md0[i][s],NS);
+	  tmp = p->y0[i][s] - p->va0[i][s] - sum(p->md0[i][s],NS-1);
 	  if(fabs(tmp)>TINY)
 	    {
 	      fprintf(logfile,"nonzero profits for country/sector %d/%d, error = %f",i,s,tmp);
@@ -502,7 +506,7 @@ uint calibrate_prod_params(params * p)
 
 	  if(cobb_douglas_flag==0)
 	    {
-	      tmp = (1.0-sum(p->lam[i][s],NS)) * (1.0-p->alpha[i][s]) * p->A[i][s]/p->lam_va[i][s] *
+	      tmp = (1.0-sum(p->lam[i][s],NS-1)) * (1.0-p->alpha[i][s]) * p->A[i][s]/p->lam_va[i][s] *
 		pow(p->k0[i][s],p->alpha[i][s]) * pow(p->l0[i][s],-(p->alpha[i][s])) - 1.0;
 	    }
 	  else
@@ -528,6 +532,14 @@ uint calibrate_prod_params(params * p)
 	      tmp = (1.0-sum(p->lam[i][s],NS-1)) * (p->alpha[i][s]) * p->A[i][s]/p->lam_va[i][s] *
 		pow(p->k0[i][s],p->alpha[i][s]-1.0) * pow(p->l0[i][s],1.0-p->alpha[i][s]) - 
 		(p->r0[i] + p->delta)/(1.0-p->tauk[i]);
+
+	      /*
+	      	      	* ( (e->py_t[t][i][s] - DOT_PROD(p->lam[i][s],e->pm_t[t][i],NS-1))
+	    * (p->a_ts[t][i][s]) * (p->alpha[i][s]) * (p->A[i][s]/p->lam_va[i][s])
+	    * (pow(e->k_t[t][i][s]/e->l_t[t][i][s],p->alpha[i][s]-1.0))
+	    - e->rk_t[t][i]/(1.0-p->tauk[i]) );
+	      */
+
 	    }
 	  else
 	    {
@@ -560,12 +572,12 @@ uint calibrate_fin_params(params * p)
   double tmp1[NC];
   double tmp2[NS];
 
-  SET_ALL_V(p->mu,NC*NS*NC,0.0);
-  SET_ALL_V(p->M,NC*NS,0.0);
+  SET_ALL_V(p->mu,NC*(NS-1)*NC,0.0);
+  SET_ALL_V(p->M,NC*(NS-1),0.0);
   SET_ALL_V(p->G,NC,0.0);
-  SET_ALL_V(p->H,NC*NS,0.0);
+  SET_ALL_V(p->H,NC*(NS-1),0.0);
   SET_ALL_V(p->eps,NC*NF*NS,0.0);
-  SET_ALL_V(p->theta,NC*NS*NC,0.0);
+  SET_ALL_V(p->theta,NC*(NS-1)*NC,0.0);
 
   for(i=0; i<NC; i++)
     {
@@ -629,9 +641,6 @@ uint calibrate_fin_params(params * p)
 	  tmp = pow( DOT_PROD_EX(p->q02[i][s],p->theta[i][s],NC,p->sig[i][s]), 1.0/p->sig[i][s] );
 	  p->H[i][s] = p->q0[i][s]/tmp;
 	}
-
-      p->theta[i][CNS][i]=1.0;
-      p->H[i][CNS] = 1.0;      
     }
 
   idx=SVC;
@@ -782,7 +791,7 @@ uint calibrate_hh_params(params * p)
       //p->eps[i][0][1] = 1.0 - p->eps[i][0][0];
 
       p->lbar[i] = 3.0 * p->ll0[i];
-      p->phi[i] = 1.0;
+      p->phi[i] = 3.0;      
 
       for(s=0; s<NS-1; s++) // we don't do this for construction!
 	{
@@ -894,41 +903,43 @@ uint write_params()
       fprintf(file,"b0:");
       fprintf_vec(file,p->b0,NC);
 
-      fprintf(file,"\nMATRIX PARAMETERS (NC x NS):\n\n");
+      fprintf(file,"\nMATRIX PARAMETERS (NC x (NS-1)):\n\n");
 
       fprintf(file,"sig:\n");
-      fprintf_mat(file,p->sig,NC);
+      fprintf_mat_1(file,p->sig,NC);
 
       fprintf(file,"H:\n");
-      fprintf_mat(file,p->H,NC);
+      fprintf_mat_1(file,p->H,NC);
 
       fprintf(file,"zeta:\n");
-      fprintf_mat(file,p->zeta,NC);
+      fprintf_mat_1(file,p->zeta,NC);
 
       fprintf(file,"M:\n");
-      fprintf_mat(file,p->M,NC);
+      fprintf_mat_1(file,p->M,NC);
+
+      fprintf(file,"\nMATRIX PARAMETERS (NC x NS):\n\n");
 
       fprintf(file,"lam_va:\n");
-      fprintf_mat(file,p->lam_va,NC);
+      fprintf_mat_2(file,p->lam_va,NC);
 
       fprintf(file,"alpha:\n");
-      fprintf_mat(file,p->alpha,NC);
+      fprintf_mat_2(file,p->alpha,NC);
 
       fprintf(file,"A:\n");
-      fprintf_mat(file,p->A,NC);
+      fprintf_mat_2(file,p->A,NC);
 	
       fprintf(file,"\n3D PARAMETERS:\n\n");
 
-      fprintf(file,"eps (NC x 2 x NS):\n");
+      fprintf(file,"eps (NC x 2 x NS:\n");
       fprintf_3d_1(file,p->eps,NC);
 
-      fprintf(file,"theta (NC x NS x NC):\n");
+      fprintf(file,"theta (NC x (NS-1) x NC):\n");
       fprintf_3d_2(file,p->theta,NC);
 
-      fprintf(file,"mu (NC x NS x NC):\n");
+      fprintf(file,"mu (NC x (NS-1) x NC):\n");
       fprintf_3d_2(file,p->mu,NC);
 
-      fprintf(file,"lam (NC x NS x NS):\n");
+      fprintf(file,"lam (NC x NS x (NS-1)):\n");
       fprintf_3d_3(file,p->lam,NC);
 
       fclose(file);

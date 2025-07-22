@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O2 -Wall -pedantic -std=c99 -fopenmp -fcommon -g
+CFLAGS = -Wall -pedantic -std=c99 -fopenmp -fcommon -g
 LDFLAGS = -lpthread -lm -ldl -lcblas -llapacke -lgsl -g
 
 EXDIR = bin

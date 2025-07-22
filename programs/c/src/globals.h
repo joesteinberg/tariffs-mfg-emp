@@ -73,6 +73,7 @@ uint cobb_douglas_flag2;
 uint par;
 uint ghh_prefs;
 uint eval_calfn_once;
+double tariff;
 
 static inline void set_all_v(double * v, uint n, double x)
 {
@@ -390,7 +391,22 @@ static inline void fprintf_vec(FILE * file, const double * v, uint n)
   fprintf(file,"\n");
 }
 
-static inline void fprintf_mat(FILE * file, const double mat[][NS], uint n)
+static inline void fprintf_mat_1(FILE * file, const double mat[][NS-1], uint n)
+{
+  uint i,j;
+  for(i=0; i<n; i++)
+    {
+      for(j=0; j<NS-1; j++)
+	{
+	  fprintf(file," %0.4f",mat[i][j]);
+	}
+      fprintf(file,"\n");
+      
+    }
+  fprintf(file,"\n");
+}
+
+static inline void fprintf_mat_2(FILE * file, const double mat[][NS], uint n)
 {
   uint i,j;
   for(i=0; i<n; i++)
@@ -404,6 +420,7 @@ static inline void fprintf_mat(FILE * file, const double mat[][NS], uint n)
     }
   fprintf(file,"\n");
 }
+
 
 static inline void fprintf_3d_1(FILE * file, const double x[][NF][NS], uint n)
 {
@@ -430,18 +447,18 @@ static inline void fprintf_3d_1(FILE * file, const double x[][NF][NS], uint n)
   fprintf(file,"\n");
 }
 
-static inline void fprintf_3d_2(FILE * file, const double x[][NS][NC], uint n)
+static inline void fprintf_3d_2(FILE * file, const double x[][NS-1][NC], uint n)
 {
   uint i,j,k;
   for(i=0; i<n; i++)
     {
-      for(j=0; j<NS; j++)
+      for(j=0; j<NS-1; j++)
 	{
 	  for(k=0; k<NC; k++)
 	    {
 	      fprintf(file," %0.4f",x[i][j][k]);
 	    }
-	  if(j==(NS-1))
+	  if(j==(NS-2))
 	    {
 	      //fprintf(file,"\n");
 	    }
@@ -455,14 +472,14 @@ static inline void fprintf_3d_2(FILE * file, const double x[][NS][NC], uint n)
   fprintf(file,"\n");
 }
 
-static inline void fprintf_3d_3(FILE * file, const double x[][NS][NS], uint n)
+static inline void fprintf_3d_3(FILE * file, const double x[][NS][NS-1], uint n)
 {
   uint i,j,k;
   for(i=0; i<n; i++)
     {
       for(j=0; j<NS; j++)
 	{
-	  for(k=0; k<NS; k++)
+	  for(k=0; k<NS-1; k++)
 	    {
 	      fprintf(file," %0.4f",x[i][j][k]);
 	    }
@@ -480,6 +497,7 @@ static inline void fprintf_3d_3(FILE * file, const double x[][NS][NS], uint n)
   fprintf(file,"\n");
 }
 
+/*
 static inline void fprintf_3d_4(FILE * file, const double x[][NS][NC-1], uint n)
 {
   uint i,j,k;
@@ -504,5 +522,6 @@ static inline void fprintf_3d_4(FILE * file, const double x[][NS][NC-1], uint n)
     }
   fprintf(file,"\n");
 }
+*/
 
 #endif

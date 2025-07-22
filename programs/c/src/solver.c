@@ -5,7 +5,7 @@
 
 //const double epsjac = GSL_SQRT_DBL_EPSILON;
 const double epsjac = 1.0e-9;
-const double root_tol = 1.0e-9;
+const double root_tol = 1.0e-8;
 const uint max_root_iter = 250;
 
 int jacobian(
@@ -186,7 +186,6 @@ uint find_root_deriv_mkl(gsl_multiroot_function_fdf * f)
 		{
 		  status = GSL_CONTINUE;
 		}
-
 
 	      if(status != GSL_SUCCESS && gsl_vector_max(s->dx) < 1.0e-14 && gsl_vector_min(s->dx) > -1.0e-14)
 		{

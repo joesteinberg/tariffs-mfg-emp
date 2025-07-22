@@ -49,38 +49,30 @@ typedef struct
   double rimm_t[NT+1][NC][NC];
 
   double y_t[NT+1][NC][NS];
-  // double MC_t[NT+1][NC][NS];
-  //double ws_t[NT+1][NC][NS];
-  //double rks_t[NT+1][NC][NS];
   double py_t[NT+1][NC][NS];
   double va_t[NT+1][NC][NS];
-  double md_t[NT+1][NC][NS][NS];
+  double rva_t[NT+1][NC][NS];
+  double md_t[NT+1][NC][NS][NS-1];
   double k_t[NT+1][NC][NS];
-  //double kd_t[NT+1][NC][NS];
   double l_t[NT+1][NC][NS];
-  //double lf_t[NT+1][NC][NS];
   double is_t[NT+1][NC][NS];
   double lp_t[NT+1][NC][NS];
 
-  double exs_t[NT+1][NC][NS][NC];
-  double ims_t[NT+1][NC][NS][NC];
-  double nxs_t[NT+1][NC][NS][NC];
-  double rexs_t[NT+1][NC][NS][NC];
-  double rims_t[NT+1][NC][NS][NC];
+  double exs_t[NT+1][NC][NS-1][NC];
+  double ims_t[NT+1][NC][NS-1][NC];
+  double nxs_t[NT+1][NC][NS-1][NC];
+  double rexs_t[NT+1][NC][NS-1][NC];
+  double rims_t[NT+1][NC][NS-1][NC];
 
-  double pm_t[NT+1][NC][NS];
-  double m_t[NT+1][NC][NS];  
-  double m2_t[NT+1][NC][NS][NC];
-  //double m2s_t[NT+1][NC][NS][NC];
-  //double pm2_t[NT+1][NC][NS][NC];
+  double pm_t[NT+1][NC][NS-1];
+  double m_t[NT+1][NC][NS-1];  
+  double m2_t[NT+1][NC][NS-1][NC];
 
-  double p_t[NT+1][NC][NS];
-  double q_t[NT+1][NC][NS];  
-  double q2_t[NT+1][NC][NS][NC];
-  //double q2s_t[NT+1][NC][NS][NC];
-  //double pq2_t[NT+1][NC][NS][NC];
+  double p_t[NT+1][NC][NS-1];
+  double q_t[NT+1][NC][NS-1];  
+  double q2_t[NT+1][NC][NS-1][NC];
 
-  double c_t[NT+1][NC][NS];
+  double c_t[NT+1][NC][NS-1];
   double i_t[NT+1][NC][NS];
 
   double welfare_t[NT+1][NC];
@@ -157,7 +149,7 @@ static inline double mpk_rk(const params * p, const eqm * e, uint t, uint i, uin
 {
   if(t>=(NT-1) || k_adj_cost==0)
     {
-      return 100.0
+      return 10.0
 	* ( (e->py_t[t][i][s] - DOT_PROD(p->lam[i][s],e->pm_t[t][i],NS-1))
 	    * (p->a_ts[t][i][s]) * (p->alpha[i][s]) * (p->A[i][s]/p->lam_va[i][s])
 	    * (pow(e->k_t[t][i][s]/e->l_t[t][i][s],p->alpha[i][s]-1.0))
@@ -165,7 +157,7 @@ static inline double mpk_rk(const params * p, const eqm * e, uint t, uint i, uin
     }
   else
     {
-      return 100.0
+      return 10.0
 	*( (e->py_t[t][i][s] - DOT_PROD(p->lam[i][s],e->pm_t[t][i],NS-1))
 	   * (1.0-p->tauk[i]) *  (p->a_ts[t][i][s]) * (p->alpha[i][s]) * (p->A[i][s]/p->lam_va[i][s])
 	   * (pow(e->k_t[t][i][s]/e->l_t[t][i][s],p->alpha[i][s]-1.0))
@@ -179,7 +171,7 @@ static inline double mpk_rk(const params * p, const eqm * e, uint t, uint i, uin
 
 static inline double mpl_w(const params * p, const eqm * e, uint t, uint i, uint s)
 {
-  double tmp = (e->py_t[t][i][s] - DOT_PROD(p->lam[i][s],e->pm_t[t][i],NS))
+  double tmp = (e->py_t[t][i][s] - DOT_PROD(p->lam[i][s],e->pm_t[t][i],NS-1))
     * (p->a_ts[t][i][s]) * (1.0-p->alpha[i][s]) * (p->A[i][s]/p->lam_va[i][s])
     * (pow(e->k_t[t][i][s]/e->l_t[t][i][s],p->alpha[i][s]))
     - e->w_t[t][i];
@@ -206,11 +198,19 @@ static inline double mpl_w(const params * p, const eqm * e, uint t, uint i, uint
 static inline double mkt_clear_y(const params * p, const eqm * e, uint t, uint i, uint s)
 {
   double retval = e->y_t[t][i][s];
-  uint j;
-  for(j=0; j<NC; j++)
+  if(s==CNS)
     {
-      retval = retval - e->m2_t[t][j][s][i] - e->q2_t[t][j][s][i];
+      retval = retval - e->i_t[t][i][s];
     }
+  else
+    {
+      uint j;
+      for(j=0; j<NC; j++)
+	{
+	  retval = retval - e->m2_t[t][j][s][i] - e->q2_t[t][j][s][i];
+	}
+    }
+  
   return retval;
 }
 
@@ -252,8 +252,7 @@ static inline double muc_mul(const params * p, const eqm * e, uint t, uint i)
     {
       if(ghh_prefs)
 	{
-	  return 1000.0 * ( pow(e->w_t[t][i] / p->phi[i], 1.0)
-			    - e->ll_t[t][i]/p->lbar[i] );
+	  return e->ll_t[t][i] - p->lbar[i] * e->w_t[t][i]/p->phi[i];
 	}
       else
 	{
@@ -328,37 +327,30 @@ static inline double prod_m_chk(const params * p, const eqm * e, uint t, uint i,
 {
   double tmp=0.0;
 
-  if(s==CNS)
+  tmp = e->m_t[t][i][s] -
+    prod_m(e->m2_t[t][i][s], p->M[i][s], p->mu[i][s], p->zeta[i][s]);
+  
+  int j;
+  for(j=0; j>NC; j++)
     {
-      tmp = e->m_t[t][i][s] - 0.0;
-    }
-  else
-    {
-      tmp = e->m_t[t][i][s] -
-	prod_m(e->m2_t[t][i][s], p->M[i][s], p->mu[i][s], p->zeta[i][s]);
-      
-      int j;
-      for(j=0; j>NC; j++)
+      if(t>0)
 	{
-	  if(t>0)
-	    {
-	      tmp = tmp - 
-		p->etaM * 
-		(e->m2_t[t][i][s][j]/e->m2_t[t-1][i][s][j]-1.0) * 
-		(e->m2_t[t][i][s][j]/e->m2_t[t-1][i][s][j]-1.0) * 
-		e->m2_t[t-1][i][s][j];
-	    }
-	  else
-	    {
-	      tmp = tmp - 
-		p->etaM * 
-		(e->m2_t[t][i][s][j]/p->m02[i][s][j]-1.0) * 
-		(e->m2_t[t][i][s][j]/p->m02[i][s][j]-1.0) * 
-		p->m02[i][s][j];
-	    }
+	  tmp = tmp - 
+	    p->etaM * 
+	    (e->m2_t[t][i][s][j]/e->m2_t[t-1][i][s][j]-1.0) * 
+	    (e->m2_t[t][i][s][j]/e->m2_t[t-1][i][s][j]-1.0) * 
+	    e->m2_t[t-1][i][s][j];
+	}
+      else
+	{
+	  tmp = tmp - 
+	    p->etaM * 
+	    (e->m2_t[t][i][s][j]/p->m02[i][s][j]-1.0) * 
+	    (e->m2_t[t][i][s][j]/p->m02[i][s][j]-1.0) * 
+	    p->m02[i][s][j];
 	}
     }
-  
+
   return tmp;
 }
 
@@ -366,34 +358,27 @@ static inline double prod_q_chk(const params * p, const eqm * e, uint t, uint i,
 {
   double tmp = 0.0;
 
-  if(s==CNS)
+  tmp = e->q_t[t][i][s] -
+    prod_q(e->q2_t[t][i][s], p->H[i][s], p->theta[i][s], p->sig[i][s]);
+  
+  int j;
+  for(j=0; j>NC; j++)
     {
-      tmp = e->q_t[t][i][s] - e->q2_t[t][i][s][i];
-    }
-  else
-    {
-      tmp = e->q_t[t][i][s] -
-	prod_q(e->q2_t[t][i][s], p->H[i][s], p->theta[i][s], p->sig[i][s]);
-      
-      int j;
-      for(j=0; j>NC; j++)
+      if(t>0)
 	{
-	  if(t>0)
-	    {
-	      tmp = tmp - 
-		p->etaF * 
-		(e->q2_t[t][i][s][j]/e->q2_t[t-1][i][s][j]-1.0) * 
-		(e->q2_t[t][i][s][j]/e->q2_t[t-1][i][s][j]-1.0) * 
-		e->q2_t[t-1][i][s][j];
-	    }
-	  else
-	    {
-	      tmp = tmp - 
-		p->etaF * 
-		(e->q2_t[t][i][s][j]/p->q02[i][s][j]-1.0) * 
-		(e->q2_t[t][i][s][j]/p->q02[i][s][j]-1.0) * 
-		p->q02[i][s][j];
-	    }
+	  tmp = tmp - 
+	    p->etaF * 
+	    (e->q2_t[t][i][s][j]/e->q2_t[t-1][i][s][j]-1.0) * 
+	    (e->q2_t[t][i][s][j]/e->q2_t[t-1][i][s][j]-1.0) * 
+	    e->q2_t[t-1][i][s][j];
+	}
+      else
+	{
+	  tmp = tmp - 
+	    p->etaF * 
+	    (e->q2_t[t][i][s][j]/p->q02[i][s][j]-1.0) * 
+	    (e->q2_t[t][i][s][j]/p->q02[i][s][j]-1.0) * 
+	    p->q02[i][s][j];
 	}
     }
   
@@ -404,31 +389,23 @@ static inline double foc_m2(const params * p, const eqm * e, uint t, uint i, uin
 {
   double tmp = 0.0;
 
-  if(s==CNS)
+  tmp = e->pm_t[t][i][s] * p->mu[i][s][j] * pow(p->M[i][s],p->zeta[i][s])
+    * pow(e->m_t[t][i][s]/e->m2_t[t][i][s][j],1.0 - p->zeta[i][s]);
+  
+  tmp = tmp - (1.0+p->tau_m_ts[t][i][s][j]) * e->py_t[t][j][s];
+  
+  if(t>0)
     {
-      tmp = e->m2_t[t][i][s][j];
+      tmp = tmp - e->pm_t[t][i][s] * p->etaM * (2.0 * e->m2_t[t][i][s][j]/e->m2_t[t-1][i][s][j] - 2.0);
     }
   else
     {
-  
-      tmp = e->pm_t[t][i][s] * p->mu[i][s][j] * pow(p->M[i][s],p->zeta[i][s])
-	* pow(e->m_t[t][i][s]/e->m2_t[t][i][s][j],1.0 - p->zeta[i][s]);
-      
-      tmp = tmp - (1.0+p->tau_m_ts[t][i][s][j]) * e->py_t[t][j][s];
-      
-      if(t>0)
-	{
-	  tmp = tmp - e->pm_t[t][i][s] * p->etaM * (2.0 * e->m2_t[t][i][s][j]/e->m2_t[t-1][i][s][j] - 2.0);
-	}
-      else
-	{
-	  tmp = tmp - e->pm_t[t][i][s] * p->etaM * (2.0 * e->m2_t[t][i][s][j]/p->m02[i][s][j] - 2.0);
-	}
-      
-      if(t<NT-1)
-	tmp = tmp - e->Q_t[t][i] * e->pm_t[t+1][i][s] * p->etaM * (1.0 - e->m2_t[t+1][i][s][j]*e->m2_t[t+1][i][s][j]/e->m2_t[t][i][s][j]/e->m2_t[t][i][s][j]);	      
-
+      tmp = tmp - e->pm_t[t][i][s] * p->etaM * (2.0 * e->m2_t[t][i][s][j]/p->m02[i][s][j] - 2.0);
     }
+  
+  if(t<NT-1)
+    tmp = tmp - e->Q_t[t][i] * e->pm_t[t+1][i][s] * p->etaM * (1.0 - e->m2_t[t+1][i][s][j]*e->m2_t[t+1][i][s][j]/e->m2_t[t][i][s][j]/e->m2_t[t][i][s][j]);	      
+  
   
   return tmp;
 }
@@ -437,33 +414,23 @@ static inline double foc_q2(const params * p, const eqm * e, uint t, uint i, uin
 {
   double tmp = 0.0;
 
-  if(s==CNS)
+  tmp = e->p_t[t][i][s] * p->theta[i][s][j] * pow(p->H[i][s],p->sig[i][s])
+    * pow(e->q_t[t][i][s]/e->q2_t[t][i][s][j],1.0 - p->sig[i][s]);
+  
+  tmp = tmp - (1.0+p->tau_f_ts[t][i][s][j]) * e->py_t[t][j][s];
+  
+  if(t>0)
     {
-      if(i!=j)
-	tmp = e->q2_t[t][i][s][j];
-      else
-	tmp = e->p_t[t][i][s] - e->py_t[t][i][s];
+      tmp = tmp - e->p_t[t][i][s] * p->etaF * (2.0 * e->q2_t[t][i][s][j]/e->q2_t[t-1][i][s][j] - 2.0);
     }
   else
     {
-      tmp = e->p_t[t][i][s] * p->theta[i][s][j] * pow(p->H[i][s],p->sig[i][s])
-	* pow(e->q_t[t][i][s]/e->q2_t[t][i][s][j],1.0 - p->sig[i][s]);
-      
-      tmp = tmp - (1.0+p->tau_f_ts[t][i][s][j]) * e->py_t[t][j][s];
-      
-      if(t>0)
-	{
-	  tmp = tmp - e->p_t[t][i][s] * p->etaF * (2.0 * e->q2_t[t][i][s][j]/e->q2_t[t-1][i][s][j] - 2.0);
-	}
-      else
-	{
-	  tmp = tmp - e->p_t[t][i][s] * p->etaF * (2.0 * e->q2_t[t][i][s][j]/p->q02[i][s][j] - 2.0);
-	}
-      
-      if(t<NT-1)
-	{
-	  tmp = tmp - e->Q_t[t][i] * e->p_t[t+1][i][s] * p->etaF * (1.0 - e->q2_t[t+1][i][s][j]*e->q2_t[t+1][i][s][j]/e->q2_t[t][i][s][j]/e->q2_t[t][i][s][j]);
-	}
+      tmp = tmp - e->p_t[t][i][s] * p->etaF * (2.0 * e->q2_t[t][i][s][j]/p->q02[i][s][j] - 2.0);
+    }
+  
+  if(t<NT-1)
+    {
+      tmp = tmp - e->Q_t[t][i] * e->p_t[t+1][i][s] * p->etaF * (1.0 - e->q2_t[t+1][i][s][j]*e->q2_t[t+1][i][s][j]/e->q2_t[t][i][s][j]/e->q2_t[t][i][s][j]);
     }
 
   return tmp;
