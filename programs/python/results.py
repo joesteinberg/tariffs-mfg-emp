@@ -19,15 +19,6 @@ dashes = [(None,None),(10,2),(3,1)]
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 
-sectors=['A','R','T','M','S']
-snames=['Agr.','Rsrcs.','Trans.','Mfg.','Srvcs.']
-
-countries=['USA','CAN','MEX']
-cnames=['USA','Canada','Mexico']
-
-partners = countries + ['ROW']
-pnames = cnames + ['ROW']
-
 def autolabel(ax,rects,sign):
     for rect in rects:
         height=sign*rect.get_height()
@@ -64,51 +55,51 @@ def load_results(a):
     
     models_usa = []
     models_usa.append(pd.read_csv('../c/output/vars0_usa_a%d.csv'%a))
-    for s in [0,1,2]:
+    for s in [0,1,2,3,4,5,6]:
         models_usa.append(pd.read_csv('../c/output/vars1_usa_t%d_s%d_c%d_r%d_d%d_a%d.csv'%(tau,s,c,r,d,a)))
 
     models_chn = []
     models_chn.append(pd.read_csv('../c/output/vars0_chn_a%d.csv'%a))
-    for s in [0,1,2]:
+    for s in [0,1,2,3,4,5,6]:
         models_chn.append(pd.read_csv('../c/output/vars1_chn_t%d_s%d_c%d_r%d_d%d_a%d.csv'%(tau,s,c,r,d,a)))
 
     models_row = []
     models_row.append(pd.read_csv('../c/output/vars0_row_a%d.csv'%a))
-    for s in [0,1,2]:
+    for s in [0,1,2,3,4,5,6]:
         models_row.append(pd.read_csv('../c/output/vars1_row_t%d_s%d_c%d_r%d_d%d_a%d.csv'%(tau,s,c,r,d,a)))
                         
     for m in models_usa:
         m['nx']=m['nx1']+m['nx2']
-        m['lg']=m['l0']+m['l1']
-        for s in [0,1,2]:
+        m['lg']=m['l0']+m['l1']+m['l2']+m['l3']
+        for s in [0,1,2,3,4]:
             m['nxs'+str(s)]=m['nxs'+str(s)+'-1']+m['nxs'+str(s)+'-2']
             m['exs'+str(s)]=m['exs'+str(s)+'-1']+m['exs'+str(s)+'-2']
             m['ims'+str(s)]=m['ims'+str(s)+'-1']+m['ims'+str(s)+'-2']
-        m['nxsg'] = m['nxs0'] + m['nxs1']
+        m['nxsg'] = m['nxs0'] + m['nxs1'] + m['nxs2'] + m['nxs3']
         for col in m.columns:
             if('nx' in col):
                 m[col] = m[col]/m.ngdp
     
     for m in models_chn:
-        m['lg']=m['l0']+m['l1']
+        m['lg']=m['l0']+m['l1']+m['l2']+m['l3']
         m['nx']=m['nx0']+m['nx2']
-        for s in [0,1,2]:
+        for s in [0,1,2,3,4]:
             m['nxs'+str(s)]=m['nxs'+str(s)+'-0']+m['nxs'+str(s)+'-2']
             m['exs'+str(s)]=m['exs'+str(s)+'-0']+m['exs'+str(s)+'-2']
             m['ims'+str(s)]=m['ims'+str(s)+'-0']+m['ims'+str(s)+'-2']
-        m['nxsg'] = m['nxs0'] + m['nxs1']
+        m['nxsg'] = m['nxs0'] + m['nxs1'] + m['nxs2'] + m['nxs3']
         for col in m.columns:
             if('nx' in col):
                 m[col] = m[col]/m.ngdp
     
     for m in models_row:
-        m['lg']=m['l0']+m['l1']
+        m['lg']=m['l0']+m['l1']+m['l2']+m['l3']
         m['nx']=m['nx0']+m['nx1']
-        for s in [0,1,2]:
+        for s in [0,1,2,3,4]:
             m['nxs'+str(s)]=m['nxs'+str(s)+'-0']+m['nxs'+str(s)+'-1']
             m['exs'+str(s)]=m['exs'+str(s)+'-0']+m['exs'+str(s)+'-1']
             m['ims'+str(s)]=m['ims'+str(s)+'-0']+m['ims'+str(s)+'-1']
-        m['nxsg'] = m['nxs0'] + m['nxs1']
+        m['nxsg'] = m['nxs0'] + m['nxs1'] + m['nxs2'] + m['nxs3']
         for col in m.columns:
             if('nx' in col):
                 m[col] = m[col]/m.ngdp
@@ -123,93 +114,68 @@ df = load_results(4)
 # make the plots
 
 mperiods = df['USA'][0].period.values
-snames=['Upstream','Downstream','Total goods']
+slabels=['Up-hi','Up-lo','Dn-hi','Dn-lo','Total']
 
 def pct_chg(df,country,variable,model_num):
     return (100*(df[country][model_num][variable]/df[country][0][variable] - 1)).values
+
+def diff_pct_tot(df,country,variable,model_num):
+    return (100*(df[country][model_num][variable]-df[country][0][variable])/df[country][0]['lg']).values
 
 def pp_chg(df,country,variable,model_num):
     return (100*(df[country][model_num][variable]-df[country][0][variable])).values
 
 # labor
-fig,ax=plt.subplots(1,1,figsize=(5,5))
+for ts in [0,1,2,3,4,5,6]:
+    
+    fig,ax=plt.subplots(1,1,figsize=(5,5))
+    cnt=0
+    for s in [0,1,2,3]:
+        data = diff_pct_tot(df,'USA','l%d'%s,ts+1)
+        ax.plot(mperiods,data,color=colors[cnt],label=slabels[cnt])
+        cnt=cnt+1
 
-cnt=0
-for s in ['0','1','g']:
-    data = pct_chg(df,'USA','l%s'%s,1)
-    ax.plot(mperiods,data,color=colors[cnt],label=snames[cnt])
-    cnt=cnt+1
+    data = diff_pct_tot(df,'USA','lg',ts+1)
+    ax.plot(mperiods,data,color='black',label=slabels[-1],lw=2)    
 
-ax.legend(loc='best')
-fig.tight_layout()
-plt.savefig('output/labor_upstream.pdf')
-plt.clf()
+    ax.legend(loc='best')
+    fig.tight_layout()
+    plt.savefig('output/labor_t%d.pdf'%(ts))
+    plt.clf()
 
+# prices
+for ts in [0,1,2,3,4,5,6]:
+    
+    fig,ax=plt.subplots(1,1,figsize=(5,5))
+    cnt=0
+    for s in [0,1,2,3]:
+        data = pct_chg(df,'USA','py%d'%s,ts+1)
+        ax.plot(mperiods,data,color=colors[cnt],label=slabels[cnt])
+        cnt=cnt+1
 
-fig,ax=plt.subplots(1,1,figsize=(5,5))
+    ax.legend(loc='best')
+    fig.tight_layout()
+    plt.savefig('output/prices_t%d.pdf'%(ts))
+    plt.clf()
 
-cnt=0
-for s in ['0','1','g']:
-    data = pct_chg(df,'USA','l%s'%s,2)
-    ax.plot(mperiods,data,color=colors[cnt],label=snames[cnt])
-    cnt=cnt+1
+# nx
+for ts in [0,1,2,3,4,5,6]:
+    
+    fig,ax=plt.subplots(1,1,figsize=(5,5))
+    cnt=0
+    for s in [0,1,2,3]:
+        data = pp_chg(df,'USA','nxs%d'%s,ts+1)
+        ax.plot(mperiods,data,color=colors[cnt],label=slabels[cnt])
+        cnt=cnt+1
 
-ax.legend(loc='best')
-fig.tight_layout()
-plt.savefig('output/labor_downstream.pdf')
-plt.clf()
-
-fig,ax=plt.subplots(1,1,figsize=(5,5))
-
-cnt=0
-for s in ['0','1','g']:
-    data = pct_chg(df,'USA','l%s'%s,3)
-    ax.plot(mperiods,data,color=colors[cnt],label=snames[cnt])
-    cnt=cnt+1
-
-ax.legend(loc='best')
-fig.tight_layout()
-plt.savefig('output/labor_both.pdf')
-plt.clf()
-
-# trade balances
-fig,ax=plt.subplots(1,1,figsize=(5,5))
-
-cnt=0
-for s in ['0','1','g']:
-    data = pp_chg(df,'USA','nxs%s'%s,1)
-    ax.plot(mperiods,data,color=colors[cnt],label=snames[cnt])
-    cnt=cnt+1
-
-ax.legend(loc='best')
-fig.tight_layout()
-plt.savefig('output/nx_upstream.pdf')
-plt.clf()
+    data = pp_chg(df,'USA','nxsg',ts+1)
+    ax.plot(mperiods,data,color='black',label=slabels[-1],lw=2)    
 
 
-fig,ax=plt.subplots(1,1,figsize=(5,5))
+    ax.legend(loc='best')
+    fig.tight_layout()
+    plt.savefig('output/nxs_t%d.pdf'%(ts))
+    plt.clf()
 
-cnt=0
-for s in ['0','1','g']:
-    data = pp_chg(df,'USA','nxs%s'%s,2)
-    ax.plot(mperiods,data,color=colors[cnt],label=snames[cnt])
-    cnt=cnt+1
 
-ax.legend(loc='best')
-fig.tight_layout()
-plt.savefig('output/nx_downstream.pdf')
-plt.clf()
-
-fig,ax=plt.subplots(1,1,figsize=(5,5))
-
-cnt=0
-for s in ['0','1','g']:
-    data = pp_chg(df,'USA','nxs%s'%s,3)
-    ax.plot(mperiods,data,color=colors[cnt],label=snames[cnt])
-    cnt=cnt+1
-
-ax.legend(loc='best')
-fig.tight_layout()
-plt.savefig('output/nx_both.pdf')
-plt.clf()
 

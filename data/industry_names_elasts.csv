@@ -1,0 +1,46 @@
+ind,elast_CP,elast_BFE,name
+A01_02,9.11,2.95,"Agriculture, hunting, forestry"
+A03,9.11,2.95,Fishing and aquaculture
+B05_06,13.53,18.3,"Mining and quarrying, energy producing products"
+B07_08,13.53,18.3,"Mining and quarrying, non-energy producing products"
+B09,13.53,18.3,Mining support service activities
+C10T12,2.62,15.8,"Food products, beverages and tobacco"
+C13T15,8.1,3.175,"Textiles, textile products, leather and footwear"
+C16,11.5,7,Wood and products of wood and cork
+C17_18,16.52,3.35,Paper products and printing
+C19,64.85,10.7,Coke and refined petroleum products
+C20,3.13,17.25,Chemical and chemical products
+C21,3.13,17.25,"Pharmaceuticals, medicinal chemical and botanical products"
+C22,1.67,46.9,Rubber and plastics products
+C23,2.41,6,Other non-metallic mineral products
+C24,3.28,17.75,Basic metals
+C25,6.99,17.75,Fabricated metal products
+C26,12.95,40.25,"Computer, electronic and optical equipment"
+C27,12.91,40.25,Electrical equipment
+C28,1.45,55.9,"Machinery and equipment, nec "
+C29,1.84,43.1,"Motor vehicles, trailers and semi-trailers"
+C30,0.39,43.1,Other transport equipment
+C31T33,3.98,45.9,Manufacturing nec; repair and installation of machinery and equipment
+D,,,"Electricity, gas, steam and air conditioning supply"
+E,,,"Water supply; sewerage, waste management and remediation activities"
+F,,,Construction
+G,,,Wholesale and retail trade; repair of motor vehicles
+H49,,,Land transport and transport via pipelines
+H50,,,Water transport
+H51,,,Air transport
+H52,,,Warehousing and support activities for transportation
+H53,,,Postal and courier activities
+I,,,Accommodation and food service activities
+J58T60,,,"Publishing, audiovisual and broadcasting activities"
+J61,,,Telecommunications
+J62_63,,,IT and other information services
+K,,,Financial and insurance activities
+L,,,Real estate activities
+M,,,"Professional, scientific and technical activities"
+N,,,Administrative and support services
+O,,,Public administration and defence; compulsory social security
+P,,,Education
+Q,,,Human health and social work activities
+R,,,"Arts, entertainment and recreation"
+S,,,Other service activities
+T,,,Activities of households as employers; undifferentiated goods- and services-producing activities of households for own use

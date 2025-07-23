@@ -8,7 +8,7 @@ locale.setlocale(locale.LC_ALL,'en_US.utf8')
 import matplotlib as mpl
 mpl.use('Agg')
 mpl.rc('font',**{'family':'serif','serif':['Palatino'],'size':16})
-mpl.rc('font',size=16)
+mpl.rc('font',size=10)
 mpl.rc('text', usetex=True)
 mpl.rc('lines',linewidth=1.5)
 #mpl.rc('savefig',bbox='tight')
@@ -96,6 +96,7 @@ def which_sector(ind):
 melted['row_sector'] = melted.row_ind.apply(which_sector)
 melted['col_sector'] = melted.col_ind.apply(which_sector)
 
+
 #############################################################################
 print('\nComputing upstreamness in goods industries...')
 
@@ -133,16 +134,13 @@ U = U.loc[~(U.row_sector.isin(['SVCS','CONS'])),:]
 
 # display results
 U = U.rename(columns={'row_sector':'ind'})
-names = pd.read_csv('../../data/industry_names.csv')
+names = pd.read_csv('../../data/industry_names_elasts.csv')[['ind','name']]
 U = pd.merge(left=U,right=names,how='left',on='ind')
 U2 = U.groupby(['ind','name'])['U'].mean().sort_values(ascending=False).reset_index()
 U2['upstream'] = np.where(U2.U > U2.U.median(),True,False)
 print(U2)
 
-#############################################################################
-print('\nAggregating across regions and sectors...')
-
-# link back to main dataframe and finish aggregating across sectors
+# link back to main dataframe
 agged = pd.merge(left=agged,
                  right=U2.rename(columns={'ind':'row_sector','upstream':'row_upstream'})[['row_sector','row_upstream']],
                  how='left',on='row_sector')
@@ -150,58 +148,162 @@ agged = pd.merge(left=agged,
 agged = pd.merge(left=agged,
                  right=U2.rename(columns={'ind':'col_sector','upstream':'col_upstream'})[['col_sector','col_upstream']],
                  how='left',on='col_sector')
-agged.loc[agged.col_upstream==True,'col_sector']='UP'
-agged.loc[agged.col_upstream==False,'col_sector']='DN'
-agged.loc[agged.row_upstream==True,'row_sector']='UP'
-agged.loc[agged.row_upstream==False,'row_sector']='DN'
+
+# temporary placeholder for aggregated sector. we need the old one for a bit still
+agged['col_sector2'] = agged.col_sector
+agged['row_sector2'] = agged.row_sector
+agged.loc[agged.col_upstream==True,'col_sector2']='UP'
+agged.loc[agged.col_upstream==False,'col_sector2']='DN'
+agged.loc[agged.row_upstream==True,'row_sector2']='UP'
+agged.loc[agged.row_upstream==False,'row_sector2']='DN'
 agged = agged.drop(['col_upstream','row_upstream'],axis=1)
-agged = agged.groupby(['row_region','row_sector','col_use','col_region','col_sector'])['value'].sum().reset_index()
-agged = agged.sort_values(by=['row_region','row_sector','col_use','col_region','col_sector'])
+
+#############################################################################
+print('\nComputing trade elasticities...')
+elasts = pd.read_csv('../../data/industry_names_elasts.csv')[['ind','elast_CP','elast_BFE']].rename(columns={'ind':'row_sector'})
+
+merged = pd.merge(left=agged,right=elasts,how='left',on='row_sector')
+trd = merged[ (merged.col_region!=merged.row_region) &
+              (merged.row_region!='TOT') &
+              (merged.col_region!='TOT') &
+              (merged.col_use!='TOT') &
+              (merged.row_sector!='TOT') &
+              (merged.row_sector!='VA') ]
+
+# first, compute weighted average elasticity by industry
+wavg = lambda x: np.average(x,weights=trd.loc[x.index,'value'])
+e1 = trd.groupby(['row_sector2','row_sector'])[['elast_CP','elast_BFE']].agg(wavg).reset_index()
+
+# now, compute median in each up/downstream sector, and divide those into high and low elasticity groups
+e1['med'] = e1.groupby('row_sector2')['elast_CP'].transform('median')
+e1['grp'] = ''
+e1.loc[e1.elast_CP>e1.med,'grp'] = '-HI'
+e1.loc[e1.elast_CP<=e1.med,'grp'] = '-LO'
+e1['row_sector3'] = e1.row_sector2 + e1.grp
+
+# last, merge these new groups back on and redo weighted averaging
+merged = pd.merge(left=agged,right=e1[['row_sector','row_sector3','elast_CP']],how='left',on='row_sector')
+                   
+trd = merged[ (merged.col_region!=merged.row_region) &
+              (merged.row_region!='TOT') &
+              (merged.col_region!='TOT') &
+              (merged.col_use!='TOT') &
+              (merged.row_sector!='TOT') &
+              (merged.row_sector!='VA') ]
+
+wavg = lambda x: np.average(x,weights=trd.loc[x.index,'value'])
+e2 = trd.groupby(['row_sector3'])[['elast_CP']].agg(wavg).reset_index()
+print(e2.loc[~(e2.elast_CP.isnull()),:])
+
+# finally, merge the new sectoral aggregation scheme back to the main dataset
+scheme = pd.merge(left=e1[['row_sector','row_sector3']],
+                  right=names.rename(columns={'ind':'row_sector'}),
+                  how='left',on='row_sector').sort_values(by='row_sector3')
+
+print('\nCreating final aggregation scheme...')
+print(scheme.loc[~(scheme.name.isnull()),:])
+
+# UP-HI = OIL
+# UP-LO = STEEL
+# DN-HI = CONSUMER GOODS
+# DN-LO = MACHINERY & AUTOS
+
+agged = pd.merge(left=agged,right=scheme,how='left',on='row_sector')
+agged = pd.merge(left=agged,right=scheme.rename(columns={'row_sector':'col_sector','row_sector3':'col_sector3'}),how='left',on='col_sector')
+
+#############################################################################
+print('\nComputing sectoral employment shares...')
+
+lc = pd.read_excel('../../data/ComponentsOfVa.xlsx',sheet_name='UVCT2-A',skiprows=7).rename(columns={'ICIO Industry Code':'ind','2023':'lcomp'})
+lc = lc.loc[~(lc.ind.isnull()),['ind','lcomp']]
+lc['lshare'] = lc.lcomp/lc.lcomp.sum()
+
+icio_inds = list(scheme.row_sector)
+def find_sector(bea_ind):
+    if bea_ind == 'F':
+        return 'CONS'
+    else:
+        for i in icio_inds:
+            if i in bea_ind:
+                return scheme.loc[scheme.row_sector==i,'row_sector3'].values[0]
+        return 'SVCS'
+
+lc['sector'] = lc.ind.apply(find_sector)
+print(lc.groupby('sector').lshare.sum())
+
+#############################################################################
+print('\nAggregating IO matrix across regions and sectors...')
+
+# now we can overwrite the aggregated sector
+agged['row_sector'] = agged['row_sector2']
+agged['col_sector'] = agged['col_sector2']
+agged.loc[~(agged.row_sector3.isnull()),'row_sector'] = agged.loc[~(agged.row_sector3.isnull()),'row_sector3']
+agged.loc[~(agged.col_sector3.isnull()),'col_sector'] = agged.loc[~(agged.col_sector3.isnull()),'col_sector3']
+
+#print(agged[['row_sector','row_sector2','row_sector3']].drop_duplicates())
+#print(agged[['row_sector','row_sector2','row_sector3']].drop_duplicates())
+
+agged2 = agged.groupby(['row_region','row_sector','col_use','col_region','col_sector'])['value'].sum().reset_index()
+agged2 = agged2.sort_values(by=['row_region','row_sector','col_use','col_region','col_sector'])
 
 # order region and sectors as desired
-agged.loc[agged.row_region=='USA','row_region'] = '1-USA'
-agged.loc[agged.row_region=='CHN','row_region'] = '2-CHN'
-agged.loc[agged.row_region=='ROW','row_region'] = '3-ROW'
-agged.loc[agged.col_region=='USA','col_region'] = '1-USA'
-agged.loc[agged.col_region=='CHN','col_region'] = '2-CHN'
-agged.loc[agged.col_region=='ROW','col_region'] = '3-ROW'
+agged2.loc[agged2.row_region=='USA','row_region'] = '1-USA'
+agged2.loc[agged2.row_region=='CHN','row_region'] = '2-CHN'
+agged2.loc[agged2.row_region=='ROW','row_region'] = '3-ROW'
+agged2.loc[agged2.col_region=='USA','col_region'] = '1-USA'
+agged2.loc[agged2.col_region=='CHN','col_region'] = '2-CHN'
+agged2.loc[agged2.col_region=='ROW','col_region'] = '3-ROW'
 
-agged.loc[agged.row_sector=='UP','row_sector'] = '1-UPSTREAM'
-agged.loc[agged.row_sector=='DN','row_sector'] = '2-DOWNSTREAM'
-agged.loc[agged.row_sector=='SVCS','row_sector'] = '3-SERVICES'
-agged.loc[agged.row_sector=='CONS','row_sector'] = '4-CONSTRUCTION'
-agged.loc[agged.col_sector=='UP','col_sector'] = '1-UPSTREAM'
-agged.loc[agged.col_sector=='DN','col_sector'] = '2-DOWNSTREAM'
-agged.loc[agged.col_sector=='SVCS','col_sector'] = '3-SERVICES'
-agged.loc[agged.col_sector=='CONS','col_sector'] = '4-CONSTRUCTION'
+agged2.loc[agged2.row_sector=='UP-HI','row_sector'] = '1-UPSTREAM-HI'
+agged2.loc[agged2.row_sector=='UP-LO','row_sector'] = '2-UPSTREAM-LO'
+agged2.loc[agged2.row_sector=='DN-HI','row_sector'] = '3-DOWNSTREAM-HI'
+agged2.loc[agged2.row_sector=='DN-LO','row_sector'] = '4-DOWNSTREAM-LO'
+agged2.loc[agged2.row_sector=='SVCS','row_sector'] = '5-SERVICES'
+agged2.loc[agged2.row_sector=='CONS','row_sector'] = '6-CONSTRUCTION'
+
+agged2.loc[agged2.col_sector=='UP-HI','col_sector'] = '1-UPSTREAM-HI'
+agged2.loc[agged2.col_sector=='UP-LO','col_sector'] = '2-UPSTREAM-LO'
+agged2.loc[agged2.col_sector=='DN-HI','col_sector'] = '3-DOWNSTREAM-HI'
+agged2.loc[agged2.col_sector=='DN-LO','col_sector'] = '4-DOWNSTREAM-LO'
+agged2.loc[agged2.col_sector=='SVCS','col_sector'] = '5-SERVICES'
+agged2.loc[agged2.col_sector=='CONS','col_sector'] = '6-CONSTRUCTION'
+
+#agged2.loc[agged2.row_sector=='UP','row_sector'] = '1-UPSTREAM'
+#agged2.loc[agged2.row_sector=='DN','row_sector'] = '2-DOWNSTREAM'
+#agged2.loc[agged2.row_sector=='SVCS','row_sector'] = '3-SERVICES'
+#agged2.loc[agged2.row_sector=='CONS','row_sector'] = '4-CONSTRUCTION'
+#agged2.loc[agged2.col_sector=='UP','col_sector'] = '1-UPSTREAM'
+#agged2.loc[agged2.col_sector=='DN','col_sector'] = '2-DOWNSTREAM'
+#agged2.loc[agged2.col_sector=='SVCS','col_sector'] = '3-SERVICES'
+#agged2.loc[agged2.col_sector=='CONS','col_sector'] = '4-CONSTRUCTION'
 
 # separate into main components in same structure as in NAFTA paper
-intermediates = agged[(agged.col_region!='TOT') &
-                      (agged.row_region!='TOT') &
-                      (agged.col_use=='INT')].groupby(['col_region','col_sector','row_region','row_sector'])['value']\
-                      .sum().reset_index().rename(columns={'value':'M'})
+intermediates = agged2[(agged2.col_region!='TOT') &
+                       (agged2.row_region!='TOT') &
+                       (agged2.col_use=='INT')].groupby(['col_region','col_sector','row_region','row_sector'])['value']\
+                       .sum().reset_index().rename(columns={'value':'M'})
 
-consumption = agged[(agged.col_sector=='CC') &
-                    (agged.col_region!='TOT') &
-                    (agged.row_region!='TOT')].groupby(['col_region','row_region','row_sector'])['value']\
-                    .sum().reset_index().rename(columns={'value':'C'})
+consumption = agged2[(agged2.col_sector=='CC') &
+                     (agged2.col_region!='TOT') &
+                     (agged2.row_region!='TOT')].groupby(['col_region','row_region','row_sector'])['value']\
+                     .sum().reset_index().rename(columns={'value':'C'})
 
-investment = agged[(agged.col_sector=='INV') &
-                    (agged.col_region!='TOT') &
-                    (agged.row_region!='TOT')].groupby(['col_region','row_region','row_sector'])['value']\
+investment = agged2[(agged2.col_sector=='INV') &
+                    (agged2.col_region!='TOT') &
+                    (agged2.row_region!='TOT')].groupby(['col_region','row_region','row_sector'])['value']\
                     .sum().reset_index().rename(columns={'value':'I'})
 
-value_added = agged[(agged.col_region!='TOT') &
-                    (agged.col_sector!='TOT') &
-                    (agged.col_use=='INT') &
-                    (agged.row_sector=='VA')].groupby(['col_region','col_sector'])['value']\
-                    .sum().reset_index().rename(columns={'value':'VA'})
+value_added = agged2[(agged2.col_region!='TOT') &
+                     (agged2.col_sector!='TOT') &
+                     (agged2.col_use=='INT') &
+                     (agged2.row_sector=='VA')].groupby(['col_region','col_sector'])['value']\
+                     .sum().reset_index().rename(columns={'value':'VA'})
 
-gross_output = agged[(agged.col_region!='TOT') &
-                     (agged.col_sector!='TOT') &
-                     (agged.col_use=='INT') &
-                     (agged.row_sector=='GO')].groupby(['col_region','col_sector'])['value']\
-                     .sum().reset_index().rename(columns={'value':'GO'})
+gross_output = agged2[(agged2.col_region!='TOT') &
+                      (agged2.col_sector!='TOT') &
+                      (agged2.col_use=='INT') &
+                      (agged2.row_sector=='GO')].groupby(['col_region','col_sector'])['value']\
+                      .sum().reset_index().rename(columns={'value':'GO'})
 
 final_demand = pd.merge(left=consumption,right=investment,
                         how='left',
@@ -239,11 +341,9 @@ print('\nAppyling assumptions and ensuring IO matrix is balanced...')
 
 
 # apply assumption: construction is purely nontraded and used only for consumption
-final_demand.loc[ (final_demand.row_sector=='4-CONSTRUCTION') & (final_demand.col_region != final_demand.row_region), 'I']=0
-intermediates.loc[ (intermediates.row_sector=='4-CONSTRUCTION') , 'M']=0
-final_demand.loc[ (final_demand.row_sector=='4-CONSTRUCTION'), 'C']=0
-
-
+final_demand.loc[ (final_demand.row_sector=='6-CONSTRUCTION') & (final_demand.col_region != final_demand.row_region), 'I']=0
+intermediates.loc[ (intermediates.row_sector=='6-CONSTRUCTION') , 'M']=0
+final_demand.loc[ (final_demand.row_sector=='6-CONSTRUCTION'), 'C']=0
     
 # ensure IO matrix is balanced
 nc  = len(final_demand.row_region.unique())
@@ -320,14 +420,14 @@ iomat2 = ras(iomat,rowsums,colsums) # run RAS
 print('Writing output...')
 
 countries = ['USA','CHN','ROW']
-sectors = ['$T_U$','$T_D$','$T_S$','$N_C$']
+sectors = ['$T_{UH}$','$T_{UL}$','$T_{DH}$','$T_{DL}$','$T_S$','$N_C$']
 
 def write_iomat_csv(iomat,fname):
     usgdp = iomat[-1,0:ns].sum()
     iomat2 = np.vstack((iomat,np.sum(iomat,axis=0).reshape((1,nc*ns+nc*2))))
     iomat2 = np.hstack((iomat2,np.sum(iomat2,axis=1).reshape((nc*ns+2,1))))
     iomat2 = 100*iomat2/usgdp
-    np.savetxt(fname=fname+'.csv',X=iomat2,fmt='%0.15f',delimiter=' ')
+    np.savetxt(fname=fname+'.txt',X=iomat2,fmt='%0.15f',delimiter=' ')
 
 def write_iomat_latex(iomat,rowsums,colsums,fname):
     usgdp = iomat[-1,0:ns].sum()
@@ -533,103 +633,105 @@ gdp.rename(columns={'col_region':'region','VA':'GDP'},inplace=True)
 trd = pd.merge(left=trd,right=gdp,how='left',on=['region'])
 trd.loc[trd.sector=='TOT','VA']=trd.loc[trd.sector=='TOT','GDP']
 
-# make latex table
-trd=trd.groupby(['region','partner','sector']).mean().reset_index()
+# # make latex table
+# trd=trd.groupby(['region','partner','sector']).mean().reset_index()
 
-sector_names = {'1-UPSTREAM':'Upstream goods',
-                '2-DOWNSTREAM':'Downstream goods',
-                '3-SERVICES':'Services',
-                '4-CONSTRUCTION':'Construction',
-                'TOT':'Total'}
+# sector_names = {'1-UPSTREAM':'Upstream goods',
+#                 '2-DOWNSTREAM':'Downstream goods',
+#                 '3-SERVICES':'Services',
+#                 '4-CONSTRUCTION':'Construction',
+#                 'TOT':'Total'}
 
-country_names = {'1-USA':'United States',
-                 '2-CHN':'China',
-                 '3-ROW':'Rest of world',
-                 'TOT':'Total'}
-partners = {'1-USA':['TOT','2-CHN','3-ROW'],'2-CHN':['TOT','1-USA','3-ROW'],'3-ROW':['TOT','1-USA','2-CHN']}
-panels = {'1-USA':'(a)','2-CHN':'(b)','3-ROW':'(c)'}
+# country_names = {'1-USA':'United States',
+#                  '2-CHN':'China',
+#                  '3-ROW':'Rest of world',
+#                  'TOT':'Total'}
+# partners = {'1-USA':['TOT','2-CHN','3-ROW'],'2-CHN':['TOT','1-USA','3-ROW'],'3-ROW':['TOT','1-USA','2-CHN']}
+# panels = {'1-USA':'(a)','2-CHN':'(b)','3-ROW':'(c)'}
 
-def fmt_num(x):
-    if np.abs(x)<1.0e-6:
-        return '& -'
-    else:
-        return '& %0.2f'%x
+# def fmt_num(x):
+#     if np.abs(x)<1.0e-6:
+#         return '& -'
+#     else:
+#         return '& %0.2f'%x
 
-with open('output/icio_summary.tex','w') as file:
-    file.write('\\begin{tabular}{lccccc}\n')
-    file.write('\\toprule\n')
-    file.write('\\makecell{Quantity} & ')
+# with open('output/icio_summary.tex','w') as file:
+#     file.write('\\begin{tabular}{lccccc}\n')
+#     file.write('\\toprule\n')
+#     file.write('\\makecell{Quantity} & ')
 
-    file.write('\\makecell{Upstream\\\\goods} & ')
-    file.write('\\makecell{Downstream\\\\goods} &')
-    file.write('\\makecell{centering Services} &')
-    file.write('\\makecell{centering Construction} & ')
-    file.write('\\makecell{centering Total}\\\\\n')
-    file.write('\\midrule\n')
+#     file.write('\\makecell{Upstream\\\\goods} & ')
+#     file.write('\\makecell{Downstream\\\\goods} &')
+#     file.write('\\makecell{centering Services} &')
+#     file.write('\\makecell{centering Construction} & ')
+#     file.write('\\makecell{centering Total}\\\\\n')
+#     file.write('\\midrule\n')
 
-    for c in ['1-USA','2-CHN','3-ROW']:
-        file.write('\\multicolumn{5}{l}{\\textit{'+panels[c]+' '+country_names[c]+'}}\\\\\n')
-        mask=trd.region==c
+#     for c in ['1-USA','2-CHN','3-ROW']:
+#         file.write('\\multicolumn{5}{l}{\\textit{'+panels[c]+' '+country_names[c]+'}}\\\\\n')
+#         mask=trd.region==c
 
-        file.write('Value added')
-        mask2 = np.logical_and(mask,trd.partner=='TOT')
-        for s in sector_names.keys():
-            mask3=np.logical_and(mask2,trd.sector==s)
-            masked=trd[mask3]
-            val = 100.0*masked['VA']/masked['GDP']
-            file.write(fmt_num(val.iloc[0]))
-        file.write('\\\\\n')
+#         file.write('Value added')
+#         mask2 = np.logical_and(mask,trd.partner=='TOT')
+#         for s in sector_names.keys():
+#             mask3=np.logical_and(mask2,trd.sector==s)
+#             masked=trd[mask3]
+#             val = 100.0*masked['VA']/masked['GDP']
+#             file.write(fmt_num(val.iloc[0]))
+#         file.write('\\\\\n')
         
-        for p in partners[c]:
-            mask2=np.logical_and(mask,trd.partner==p)
-            if p=='TOT':
-                file.write('Exports')
-            else:
-                file.write('\quad to ' + country_names[p])
-            for s in sector_names.keys():
-                mask3=np.logical_and(mask2,trd.sector==s)
-                masked=trd[mask3]
-                val = 100.0*(masked['ex'])/masked['GDP']
-                file.write(fmt_num(val.iloc[0]))
-            file.write('\\\\\n')
+#         for p in partners[c]:
+#             mask2=np.logical_and(mask,trd.partner==p)
+#             if p=='TOT':
+#                 file.write('Exports')
+#             else:
+#                 file.write('\quad to ' + country_names[p])
+#             for s in sector_names.keys():
+#                 mask3=np.logical_and(mask2,trd.sector==s)
+#                 masked=trd[mask3]
+#                 val = 100.0*(masked['ex'])/masked['GDP']
+#                 file.write(fmt_num(val.iloc[0]))
+#             file.write('\\\\\n')
 
-        for p in partners[c]:
-            mask2=np.logical_and(mask,trd.partner==p)
-            if p=='TOT':
-                file.write('Imports')
-            else:
-                file.write('\quad from ' + country_names[p])
-            for s in sector_names.keys():
-                mask3=np.logical_and(mask2,trd.sector==s)
-                masked=trd[mask3]
-                val = 100.0*(masked['im'])/masked['GDP']
-                file.write(fmt_num(val.iloc[0]))
-            file.write('\\\\\n')
+#         for p in partners[c]:
+#             mask2=np.logical_and(mask,trd.partner==p)
+#             if p=='TOT':
+#                 file.write('Imports')
+#             else:
+#                 file.write('\quad from ' + country_names[p])
+#             for s in sector_names.keys():
+#                 mask3=np.logical_and(mask2,trd.sector==s)
+#                 masked=trd[mask3]
+#                 val = 100.0*(masked['im'])/masked['GDP']
+#                 file.write(fmt_num(val.iloc[0]))
+#             file.write('\\\\\n')
 
-        for p in partners[c]:
-            mask2=np.logical_and(mask,trd.partner==p)
-            if p=='TOT':
-                file.write('Net exports')
-            else:
-                file.write('\quad with ' + country_names[p])
-            for s in sector_names.keys():
-                mask3=np.logical_and(mask2,trd.sector==s)
-                masked=trd[mask3]
-                val = 100.0*masked['tb']/masked['GDP']
-                file.write(fmt_num(val.iloc[0]))
-            file.write('\\\\\n')
+#         for p in partners[c]:
+#             mask2=np.logical_and(mask,trd.partner==p)
+#             if p=='TOT':
+#                 file.write('Net exports')
+#             else:
+#                 file.write('\quad with ' + country_names[p])
+#             for s in sector_names.keys():
+#                 mask3=np.logical_and(mask2,trd.sector==s)
+#                 masked=trd[mask3]
+#                 val = 100.0*masked['tb']/masked['GDP']
+#                 file.write(fmt_num(val.iloc[0]))
+#             file.write('\\\\\n')
 
-        if(c!='ROW'):
-            file.write('\\\\\n')
+#         if(c!='ROW'):
+#             file.write('\\\\\n')
 
-    file.write('\\bottomrule\n')
-    file.write('\\end{tabular}\n')
+#     file.write('\\bottomrule\n')
+#     file.write('\\end{tabular}\n')
 
 # figures
-sector_names = {'1-UPSTREAM':'Upstream goods',
-                '2-DOWNSTREAM':'Downstream goods',
-                '3-SERVICES':'Services',
-                '4-CONSTRUCTION':'Construction'}
+sector_names = {'1-UPSTREAM-HI':'Up-hi',
+                '2-UPSTREAM-LO':'Up-lo',
+                '3-DOWNSTREAM-HI':'Down-hi',
+                '4-DOWNSTREAM-LO':'Down-lo',
+                '5-SERVICES':'Svcs',
+                '6-CONSTRUCTION':'Cnstr'}
 
 country_names = {'1-USA':'United States',
                  '2-CHN':'China',
@@ -654,14 +756,14 @@ df['im2'] = df.im
 df['ex2'] = df.ex
 df['va2'] = df.VA
 
-print(df.ex_M)
+#print(df.ex_M)
 for col in cols:
     if col in ['trd','trd_M','im_M','ex_M','im','ex']:
         df[col]=100*df[col]/df.VA
     else:
         df[col]=100*df[col]/df.GDP
 
-print(df.ex_M)
+#print(df.ex_M)
 
 cols=['tb','ex','im','ex_M','im_M','trd2','trd']
 avg_s = df[df.partner!='TOT'].groupby(['region','sector'])[cols].sum().reset_index()
@@ -669,38 +771,6 @@ avg_s = df[df.partner!='TOT'].groupby(['region','sector'])[cols].sum().reset_ind
 
 avg_p = df[df.partner!='TOT'].groupby(['region','partner'])[cols].sum().reset_index()
 #avg_va = df.groupby(['region','sector'])['va2'].mean().reset_index()
-
-# figure 1: trade/GDP by partner
-fig,axes=plt.subplots(1,1,figsize=(5,3.5))
-
-data=[np.zeros(3) for p in partners]
-inds=range(len(partners))
-
-for i in inds:
-    p=partners[i]
-    for j in inds[0:3]:
-        c=countries[j]
-        tmp=avg_p.trd2[np.logical_and(avg_p.partner==p,avg_p.region==c)]
-        if(len(tmp)>0):
-            data[i][j]=tmp.values[0]
-
-p1=axes.bar(inds[0:3],data[0],
-            color=colors[0],edgecolor='black',linewidth=0.5,hatch=hatches[0],align='center',width=0.5,alpha=0.99)
-
-p2=axes.bar(inds[0:3],data[1],bottom=data[0],
-            color=colors[1],edgecolor='black',linewidth=0.5,hatch=4*hatches[1],align='center',width=0.5,alpha=0.99)
-
-p3=axes.bar(inds[0:3],data[2],bottom=data[0]+data[1],
-            color=colors[2],edgecolor='black',linewidth=0.5,hatch=4*hatches[2],align='center',width=0.5,alpha=0.99)
-
-axes.set_xticks(inds[0:4])
-axes.set_xticklabels(countries)
-axes.set_ylim(0,40)
-axes.set_xlim(-0.5,2.5)
-axes.set_ylabel('percent GDP')
-axes.legend([p1,p2,p3],pnames,loc='upper left',prop={'size':8},ncol=1)
-fig.tight_layout()
-plt.savefig('output/fig1_bilateral_trade.pdf')
 
 # figure 2: sectoral trade relative to VA
 width=0.25
@@ -725,7 +795,7 @@ axes[0,0].set_ylabel('percent sectoral value added')
 axes[0,0].set_title('(a) Total imports',y=1.04,size=10)
 axes[0,0].set_xticks(inds+width*1.5)
 axes[0,0].set_xticklabels(wrapped_snames[:-1])
-axes[0,0].set_xlim(-0.25,3.0)
+axes[0,0].set_xlim(-0.25,5.0)
 
 # (b) sectoral intermediate imports/GDP
 inds=np.arange(len(sectors[:-1]))
@@ -764,8 +834,8 @@ for i in range(len(countries)):
 axes[1,0].set_ylabel('percent sectoral value added')
 axes[1,0].set_title('(c) Total exports',y=1.04,size=10)
 axes[1,0].set_xticks(inds+width*1.5)
-axes[1,0].set_xticklabels(wrapped_snames[:-1])
-axes[1,0].set_xlim(-0.25,3.0)
+axes[1,0].set_xticklabels(wrapped_snames[:-1],size=8)
+axes[1,0].set_xlim(-0.25,5.0)
 
 # (d) sectoral intermediate imports/GDP
 inds=np.arange(len(sectors[:-1]))
@@ -787,7 +857,7 @@ axes[1,1].set_title('(d) Intermediate exports',y=1.04,size=10)
 axes[1,1].legend([p1,p2,p3],countries,loc='upper right',prop={'size':8})
 fig.subplots_adjust(hspace=0.05,wspace=0.05)
 fig.tight_layout()
-plt.savefig('output/fig2_sectoral_trade.pdf')
+plt.savefig('output/sectoral_trade.pdf')
 plt.clf()
 
 width=0.25
@@ -837,6 +907,7 @@ p3=axes[0].bar(inds[0:3],data[2],bottom=bottom,
 bottom_pos=bottom_pos+vmax(data[2])
 bottom_neg=bottom_neg+vmin(data[2])
 
+
 axes[0].plot(range(-1,4),np.zeros(len(range(-1,4))),color='black',linestyle='-')
 axes[0].set_xticks(inds)
 axes[0].set_xticklabels(countries)
@@ -877,13 +948,26 @@ p3=axes[1].bar(inds,data[2],bottom=bottom,
 bottom_pos=bottom_pos+vmax(data[2])
 bottom_neg=bottom_neg+vmin(data[2])
 
+bottom=which_bottom(bottom_pos,bottom_neg,data[3])
+p4=axes[1].bar(inds,data[3],bottom=bottom,
+               color=colors[3],hatch=4*hatches[3],linewidth=1,align='center',width=0.5,alpha=0.99,edgecolor='black',)
+bottom_pos=bottom_pos+vmax(data[3])
+bottom_neg=bottom_neg+vmin(data[3])
+
+bottom=which_bottom(bottom_pos,bottom_neg,data[4])
+p5=axes[1].bar(inds,data[4],bottom=bottom,
+               color=colors[4],hatch=4*hatches[4],linewidth=1,align='center',width=0.5,alpha=0.99,edgecolor='black',)
+bottom_pos=bottom_pos+vmax(data[4])
+bottom_neg=bottom_neg+vmin(data[4])
+
+
 axes[1].plot(range(-1,4),np.zeros(len(range(-1,4))),color='black',linestyle='-')
 axes[1].set_title('(b) By sector',y=1.04,size=10)
-axes[1].legend([p1,p2,p3],snames,loc='upper left',prop={'size':8},ncol=2)
+axes[1].legend([p1,p2,p3,p4,p5],snames,loc='upper left',prop={'size':8},ncol=2)
 
 fig.subplots_adjust(hspace=0.05,wspace=0.05)
 fig.tight_layout()
-plt.savefig('output/fig3_trade_balances.pdf')
+plt.savefig('output/trade_balances.pdf')
 plt.clf()
 
 

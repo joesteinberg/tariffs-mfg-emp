@@ -25,11 +25,13 @@
 #define ROW 2
 
 
-#define NS 4 // 4 sectors (0 = upstream, 1 = downstream, 2 = services, 3 = construction)
-#define UPS 0
-#define DNS 1
-#define SVC 2
-#define CNS 3
+#define NS 6 // 4 sectors (0 = upstream-hi, 1 = upstream-hi, 2 = downstreadm-hi, 3 - downstream-lo, 4 = services, 5 = construction)
+#define UPH 0
+#define UPL 1
+#define DNH 2
+#define DNL 3
+#define SVC 4
+#define CNS 5
 
 #define NF 2 // 2 final uses (0=Cons, 1=Inv)
 #define FIN 0

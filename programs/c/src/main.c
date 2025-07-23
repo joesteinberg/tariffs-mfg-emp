@@ -33,17 +33,37 @@ uint parse_args(int argc, char **argv)
 	if(s==0)
 	  {
 	    target_sector_flag=0;
-	    fprintf(logfile,"\n-Upstream goods only\n");
+	    fprintf(logfile,"\n-Upstream/hi only\n");
 	  }
 	else if(s==1)
 	  {
 	    target_sector_flag=1;
-	    fprintf(logfile,"Downstream goods only\n");
+	    fprintf(logfile,"\n-Upstream/lo only\n");
 	  }
 	else if(s==2)
 	  {
 	    target_sector_flag=2;
-	    fprintf(logfile,"Upstream + downstream goods\n");
+	    fprintf(logfile,"\n-Upstream/all\n");
+	  }
+	else if(s==3)
+	  {
+	    target_sector_flag=3;
+	    fprintf(logfile,"\n-Downstream/hi only\n");
+	  }
+	else if(s==4)
+	  {
+	    target_sector_flag=4;
+	    fprintf(logfile,"\n-Downstream/lo only\n");
+	  }
+	else if(s==5)
+	  {
+	    target_sector_flag=5;
+	    fprintf(logfile,"\n-Downstream/all\n");
+	  }
+	else if(s==6)
+	  {
+	    target_sector_flag=6;
+	    fprintf(logfile,"\n-All goods\n");
 	  }
 	else
 	  {
@@ -298,11 +318,19 @@ int quant_exercise()
   // -------------------------------------------------------------------------------------------------------
   // 1-period average SR trade elasticity
   //double tmp = eee1[0].te_t[TSHOCK][0];
-  if(target_sector_flag==0 || target_sector_flag==2)
-    fprintf(logfile,"SR trade elasticity (upstream): %0.4f\n",eee1[0].tes2_t[TSHOCK][0][UPS][CHN]);
-  if(target_sector_flag==1 || target_sector_flag==2)
-    fprintf(logfile,"SR trade elasticity (downstream): %0.4f\n",eee1[0].tes2_t[TSHOCK][0][DNS][CHN]);
-  
+  fprintf(logfile,"Short run trade elasticities:\n");
+
+  if(target_sector_flag==0 || target_sector_flag==2 || target_sector_flag==6)
+    fprintf(logfile,"Up-hi: %0.4f\n",eee1[0].tes2_t[TSHOCK][0][UPH][CHN]);
+
+  if(target_sector_flag==1 || target_sector_flag==2 || target_sector_flag==6)
+    fprintf(logfile,"Up-lo: %0.4f\n",eee1[0].tes2_t[TSHOCK][0][UPL][CHN]);
+
+  if(target_sector_flag==3 || target_sector_flag==5 || target_sector_flag==6)
+    fprintf(logfile,"Dn-hi: %0.4f\n",eee1[0].tes2_t[TSHOCK][0][DNH][CHN]);
+
+  if(target_sector_flag==4 || target_sector_flag==5 || target_sector_flag==6)
+    fprintf(logfile,"Dn-lo: %0.4f\n",eee1[0].tes2_t[TSHOCK][0][DNL][CHN]);
   
   return 0;
 }
@@ -344,7 +372,9 @@ int main(int argc, char * argv[])
   omp_set_num_threads(NTH);
   uint nt = omp_get_max_threads();
   fprintf(logfile, "\nParallel processing using %d OMP threads\n",nt);
-  
+#endif
+
+  /*
 #pragma omp parallel num_threads(nt)
   {
     int it = omp_get_thread_num();
@@ -352,6 +382,7 @@ int main(int argc, char * argv[])
   }
   fprintf(logfile,"\n");
 #endif
+  */
 
   quant_exercise();
 

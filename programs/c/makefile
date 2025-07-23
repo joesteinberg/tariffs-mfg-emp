@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -pedantic -std=c99 -fopenmp -fcommon -g
-LDFLAGS = -lpthread -lm -ldl -lcblas -llapacke -lgsl -g
+CFLAGS = -Wall -pedantic -std=c99 -fopenmp -fcommon -g -O2
+LDFLAGS = -lpthread -lm -ldl -lcblas -llapacke -lgsl -g -O2
 
 EXDIR = bin
 ODIR = src/obj

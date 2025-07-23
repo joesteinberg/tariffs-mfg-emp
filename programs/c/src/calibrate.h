@@ -176,29 +176,50 @@ static inline double prod_va(double k, double l, double A, double alpha)
 // Inv = G * [up^eps1 * dn*^eps2 * svcs^eps3 * cons^eps4]
 static inline double prod_inv(const double x[NS], const double eps[NS], double G)
 {
-  // do we want to switch to a CES?
-  return G * pow(x[0],eps[0]) * pow(x[1],eps[1]) * pow(x[2],eps[2]) * pow(x[3],eps[3]);
+  double tmp=1.0;
+  for(int s=0; s<NS; s++)
+    tmp = tmp * pow(x[s],eps[s]);
+
+  return G*tmp;
+  //return G * pow(x[0],eps[0]) * pow(x[1],eps[1]) * pow(x[2],eps[2]) * pow(x[3],eps[3]);
 }
 
 // M_s = C * [sum_{j=1}^{NC} (mu_j * m_j)^zeta]^(1/zeta)
 static inline double prod_m(const double m2[NC], double M, const double mu[NC], double zeta)
 {
+  double tmp = 00;
+  for(int c=0; c<NC; c++)
+    tmp = tmp + mu[c]*pow(m2[c],zeta);
+
+  return M*pow(tmp,1.0/zeta);
+
+  /*
   return M * pow( mu[0]*pow(m2[0],zeta) + 
 		  mu[1]*pow(m2[1],zeta) + 
 		  mu[2]*pow(m2[2],zeta), 1.0/zeta );
+  */
 }
 
 // f_s = H * [sum_{j=1}^{NC} (theta_j * f_j)^sig]^(1/sig)
 static inline double prod_q(const double q2[NC], double H, const double theta[NC], double sig)
 {
+  double tmp = 0.0;
+  for(int c=0; c<NC; c++)
+    tmp = tmp + theta[c]*pow(q2[c],sig);
+
+  return H*pow(tmp,1.0/sig);
+
+  /*
   return H * pow( theta[0]*pow(q2[0],sig) + 
 		  theta[1]*pow(q2[1],sig) + 
 		  theta[2]*pow(q2[2],sig), 1.0/sig );
+  */
 }
 
 // d u(c_up, c_dn, c_svcs, leis) / d c_s
 static inline double muc(const double c[NS-1], double l, double lbar, const double eps[NS], double rho, double phi, double psi, uint s)
 {
+  
   double leisure;
   if(lbar-l > 0.0001)
     {

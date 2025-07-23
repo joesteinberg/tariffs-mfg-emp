@@ -464,7 +464,9 @@ uint set_initial_bgp_guess()
       e->w_t[t][i] = 1.0;
       for(s=0; s<NS; s++)
 	{
-	  e->c_t[t][i][s] = p->c0[i][s];
+	  if(s!=CNS)
+	    e->c_t[t][i][s] = p->c0[i][s];
+	  
 	  e->l_t[t][i][s] = p->l0[i][s];
 	  e->k_t[t][i][s] = p->k0[i][s];
 	  e->py_t[t][i][s] = 1.0;
@@ -770,7 +772,7 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 	  for(r=0; r<NS-1; r++)
 	    {
 	      e->md_t[t][i][s][r] = e->y_t[t][i][s]*p->lam[i][s][r];
-	      e->rva_t[t][t][s] -= e->md_t[t][i][s][r];
+	      e->rva_t[t][i][s] -= e->md_t[t][i][s][r];
 	    }
 
 	  e->lp_t[t][i][s] = e->rva_t[t][i][s]/e->l_t[t][i][s];
@@ -854,7 +856,7 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 			    p->rho,
 			    p->phi[i],
 			    p->psi,
-			    2);
+			    SVC);
 	  double mut = muc(
 			   e->c_t[t-1][i],
 			   e->ll_t[t-1][i],
@@ -863,9 +865,9 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 			   p->rho,
 			   p->phi[i],
 			   p->psi,
-			   2);
+			   SVC);
 	  
-	  e->Q_t[t-1][i] = p->beta[i] * (mutp / e->p_t[t][i][2]) / (mut / e->p_t[t-1][i][2]);
+	  e->Q_t[t-1][i] = p->beta[i] * (mutp / e->p_t[t][i][SVC]) / (mut / e->p_t[t-1][i][SVC]);
 	}
       if(t==NT)
 	{
@@ -885,7 +887,11 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 	{
 	  e->i_t[t][i][s] = e->pi_t[t][i] * p->eps[i][1][s] * e->ii_t[t][i]/e->p_t[t][i][s];
 	  e->q_t[t][i][s] = e->c_t[t][i][s] + e->i_t[t][i][s];
-	  e->m_t[t][i][s] = e->md_t[t][i][UPS][s] + e->md_t[t][i][DNS][s] + e->md_t[t][i][SVC][s] + e->md_t[t][i][CNS][s];
+
+	  //e->m_t[t][i][s] = e->md_t[t][i][UPS][s] + e->md_t[t][i][DNS][s] + e->md_t[t][i][SVC][s] + e->md_t[t][i][CNS][s];
+	  e->m_t[t][i][s]=0.0;
+	  for(j=0; j<NS; j++)
+	    e->m_t[t][i][s] += e->md_t[t][i][j][s];
 
 	  if(!m_adj_cost || t==NT)
 	    {
@@ -951,6 +957,7 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
     {
       for(j=0; j<NC; j++)
 	{
+	  /*
 	  e->ngdp_t[t][i] = e->ngdp_t[t][i] - 
 	    e->py_t[t][j][0]*e->m2_t[t][i][0][j] - 
 	    e->py_t[t][j][1]*e->m2_t[t][i][1][j] - 
@@ -960,6 +967,12 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 	    e->m2_t[t][i][0][j] - 
 	    e->m2_t[t][i][1][j] - 
 	    e->m2_t[t][i][2][j];
+	  */
+	  for(int k=0; k<NS-1; k++)
+	    {
+	      e->ngdp_t[t][i] -= e->py_t[t][j][k]*e->m2_t[t][i][k][j];
+	      e->rgdp_t[t][i] -= e->m2_t[t][i][k][j];
+	    }	  
 	  
 	  if(j!=i)
 	    {
@@ -1532,8 +1545,9 @@ void calc_welfare(eqm * e, const params * p)
       e->welfare_t[t][i] = (1.0/(1.0-p->beta[i]*pow(1.0,p->phi[i]*p->psi))) * 
 	(pow(p->eps[i][0][0] * pow(e->c_t[t][i][0],p->rho) +
 	     p->eps[i][0][1] * pow(e->c_t[t][i][1],p->rho) + 
-	     p->eps[i][0][2] * pow(e->c_t[t][i][2],p->rho),
-
+	     p->eps[i][0][2] * pow(e->c_t[t][i][2],p->rho) +
+	     p->eps[i][0][3] * pow(e->c_t[t][i][3],p->rho) +
+	     p->eps[i][0][4] * pow(e->c_t[t][i][4],p->rho),
 	     p->phi[i]*p->psi/p->rho) * 
 	 pow((p->lbar[i]-e->ll_t[t][i]),(1.0-p->phi[i])*p->psi));	
       
@@ -1542,7 +1556,9 @@ void calc_welfare(eqm * e, const params * p)
 	  e->welfare_t[t][i] = p->beta[i] * e->welfare_t[t+1][i] + 
 	    (pow(p->eps[i][0][0] * pow(e->c_t[t][i][0],p->rho) +
 		 p->eps[i][0][1] * pow(e->c_t[t][i][1],p->rho) + 
-		 p->eps[i][0][2] * pow(e->c_t[t][i][2],p->rho),
+		 p->eps[i][0][2] * pow(e->c_t[t][i][2],p->rho) +
+		 p->eps[i][0][3] * pow(e->c_t[t][i][3],p->rho) +
+		 p->eps[i][0][4] * pow(e->c_t[t][i][4],p->rho),
 		 p->phi[i]*p->psi/p->rho) * 
 	    pow((p->lbar[i]-e->ll_t[t][i]),(1.0-p->phi[i])*p->psi));
 	  

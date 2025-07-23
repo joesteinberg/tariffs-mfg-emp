@@ -82,11 +82,11 @@ uint set_nontargeted_params(params * p)
     }
   if(l_adj_cost==0)
     {
-      p->etaL = 6.5;
+      p->etaL = 0.001;
     }
   else
     {
-      p->etaL = 1.0;
+      p->etaL = 6.5;
     }
   if(f_adj_cost==0)
     {
@@ -125,14 +125,20 @@ uint set_nontargeted_params(params * p)
   int i;
   for(i=0; i<NC; i++)
     {
-      p->zeta[i][0] = 1.0-1.0/4.0;
-      p->sig[i][0] = 1.0-1.0/4.0;
+      p->zeta[i][UPH] = 1.0-1.0/8.0;
+      p->sig[i][UPH] = 1.0-1.0/8.0;
       
-      p->zeta[i][1] = 1.0-1.0/4.0;
-      p->sig[i][1] = 1.0-1.0/4.0;
-      
-      p->zeta[i][2] = 1.0-1.0/4.0;
-      p->sig[i][2] = 1.0-1.0/4.0;
+      p->zeta[i][UPL] = 1.0-1.0/2.0;
+      p->sig[i][UPL] = 1.0-1.0/2.0;
+
+      p->zeta[i][DNH] = 1.0-1.0/4.0;
+      p->sig[i][DNH] = 1.0-1.0/4.0;
+
+      p->zeta[i][DNL] = 1.0-1.0/1.05;
+      p->sig[i][DNL] = 1.0-1.0/1.05;
+
+      p->zeta[i][SVC] = 1.0-1.0/1.05;
+      p->sig[i][SVC] = 1.0-1.0/1.05;
     }     
 
   return 0;
@@ -208,13 +214,22 @@ void set_tariffs(params * p, uint scenario)
 	      if(duration_flag==1 && t>=4)
 		x=0.0;
 
-	      // turn off tariffs for nontargeted sectors
-	      if(target_sector_flag==0 && s==DNS)
-		x=0.0;
-
-	      if(target_sector_flag==1 && s==UPS)
-		x=0.0;
-
+	      // turn off tariffs for nontargeted sectors		
+	      if(target_sector_flag==0)
+		x = (s==UPH ? x : 0.0);
+	      else if(target_sector_flag==1)
+		x = (s==UPL ? x : 0.0);
+	      else if(target_sector_flag==2)
+		x = (s==UPL||s==UPH ? x : 0.0);
+	      else if(target_sector_flag==3)
+		x = (s==DNH ? x : 0.0);
+	      else if(target_sector_flag==4)
+		x = (s==DNL ? x : 0.0);
+	      else if(target_sector_flag==5)
+		x = (s==DNL||s==DNH ? x : 0.0);
+	      else if(target_sector_flag==6)
+		x = x;
+	      
 	      // tariffs on China
 	      if(target_country_flag==0 || target_country_flag==2) 
 		{
@@ -250,6 +265,16 @@ uint store_base_period_values(params * p)
   double mkt_clear_tol = 1.0e-7;
   uint varow = NC*NS;
   uint gorow = NC*NS+1;
+  
+  // from IMF BoP dataset
+  double usa_gdp_usdmm = 27000000;
+  double usa_nfa_usdmm = -19853153.3747712;
+  double chn_nfa_usdmm = 2908203;
+
+  // from US BEA data
+  double agg_cap_share = 0.34;
+  //double lshare[NS] = {0.043594, 0.060821, 0.843225, 0.052360};
+  double lshare[NS] = {0.012035, 0.031559, 0.023539,  0.037282,  0.843225, 0.052360};
 
 
   SET_ALL_V(p->y0,NC*NS,0.0);
@@ -275,12 +300,6 @@ uint store_base_period_values(params * p)
       uint ccol = NC*NS+i;
       uint icol = NC*NS+NC+i;
 
-      //double rdky = p->alpha[i][0]*(p->va0[i][0]+p->va0[i][1]);
-      //double dky = p->delta*p->kk0[i];
-      //p->tauk[i] = 1.0 - ( (dky+p->r0[i]*p->kk0[i])/rdky );
-      //double rky = rdky - dky;
-      //p->r0[i] = ((1.0-p->tauk[i])*rdky-dky)/p->kk0[i];
-
       for(s=0; s<NS; s++)
 	{  
 	  // first get value added and factors
@@ -288,9 +307,19 @@ uint store_base_period_values(params * p)
 	  p->y0[i][s] = p->iomat[gorow][scol];
 	  p->va0[i][s] = p->iomat[varow][scol];
 
-	  p->l0[i][s] = (1.0 - p->alpha[i][s]) * p->va0[i][s];
-	  //p->k0[i][s] = p->alpha[i][s] * p->va0[i][s] / ((p->r0[i] + p->delta) / (1.0 - p->tauk[i]));
-
+	  // use the US labor compensation share data to figure out the sectoral capital shares
+	  if(i==0)
+	    {
+	      p->l0[i][s] = 100.0*(1.0-agg_cap_share)*lshare[s];
+	      p->alpha[i][s] = 1.0 - p->l0[i][s] / p->va0[i][s];
+	      //printf("Capital share for sector %d = %0.3f\n",s,p->alpha[i][s]);
+	    }
+	  // for other countries, use the inferred capital shares to back out labor
+	  else
+	    {
+	      p->l0[i][s] = (1.0 - p->alpha[i][s]) * p->va0[i][s];
+	    }
+	  
 	  // now get demand for products from different source countries and sectors 
 	  for(j=0; j<NC; j++)
 	    {
@@ -326,7 +355,7 @@ uint store_base_period_values(params * p)
       p->ll0[i] = sum(p->l0[i],NS);
       p->ii0[i] = sum(p->i0[i],NS);
 
-      p->tauk[i] = 1.0 - ((p->r0[i]+p->delta)*(p->ii0[i]/p->delta))/(p->alpha[i][0]*SUM(p->va0[i],NS));
+      p->tauk[i] = 1.0 - ((p->r0[i]+p->delta)*(p->ii0[i]/p->delta))/(agg_cap_share*SUM(p->va0[i],NS));
       for(s=0; s<NS; s++)
 	{
 	  p->k0[i][s] = p->alpha[i][s] * p->va0[i][s] / ((p->r0[i] + p->delta) / (1.0 - p->tauk[i]));
@@ -359,7 +388,12 @@ uint store_base_period_values(params * p)
 		  p->ex02[i][s][j] = 0.0;
 		  p->nx02[i][s][j] = 0.0;
 		}
+	      p->im0[i][j] += p->im02[i][s][j];
+	      p->ex0[i][j] += p->ex02[i][s][j];
+	      p->nx0[i][j] += p->nx02[i][s][j];
 	    }
+
+	  /*
 	  p->im0[i][j] = p->im02[i][0][j] + 
 	    p->im02[i][1][j] + 
 	    p->im02[i][2][j];
@@ -371,6 +405,7 @@ uint store_base_period_values(params * p)
 	  p->nx0[i][j] = p->nx02[i][0][j] + 
 	    p->nx02[i][1][j] + 
 	    p->nx02[i][2][j];
+	  */
 	}
     }
 
@@ -426,11 +461,6 @@ uint store_base_period_values(params * p)
 	    }
 	}
     }
-
-  // from IMF BoP dataset
-  double usa_gdp_usdmm = 27000000;
-  double usa_nfa_usdmm = -19853153.3747712;
-  double chn_nfa_usdmm = 2908203;
 
   p->b0[0] = 100*usa_nfa_usdmm/usa_gdp_usdmm;
   p->b0[1] = 100*chn_nfa_usdmm/usa_gdp_usdmm;
@@ -532,14 +562,6 @@ uint calibrate_prod_params(params * p)
 	      tmp = (1.0-sum(p->lam[i][s],NS-1)) * (p->alpha[i][s]) * p->A[i][s]/p->lam_va[i][s] *
 		pow(p->k0[i][s],p->alpha[i][s]-1.0) * pow(p->l0[i][s],1.0-p->alpha[i][s]) - 
 		(p->r0[i] + p->delta)/(1.0-p->tauk[i]);
-
-	      /*
-	      	      	* ( (e->py_t[t][i][s] - DOT_PROD(p->lam[i][s],e->pm_t[t][i],NS-1))
-	    * (p->a_ts[t][i][s]) * (p->alpha[i][s]) * (p->A[i][s]/p->lam_va[i][s])
-	    * (pow(e->k_t[t][i][s]/e->l_t[t][i][s],p->alpha[i][s]-1.0))
-	    - e->rk_t[t][i]/(1.0-p->tauk[i]) );
-	      */
-
 	    }
 	  else
 	    {
@@ -671,14 +693,20 @@ uint calibrate_fin_params(params * p)
 
   for(i=0; i<NC; i++) 
     {
+      double tmp = 1.0;
       for(s=0; s<NS; s++) // this is the only one where we do it for construction
 	{
 	  p->eps[i][1][s] = p->i0[i][s] / p->ii0[i];
+	  tmp = tmp * pow(p->i0[i][s],p->eps[i][1][s]);
 	}
+
+      p->G[i] = p->ii0[i]/tmp;
+      /*
       p->G[i] = p->ii0[i]/ ( pow(p->i0[i][0],p->eps[i][1][0]) * 
 			     pow(p->i0[i][1],p->eps[i][1][1]) *
 			     pow(p->i0[i][2],p->eps[i][1][2]) * 
 			     pow(p->i0[i][3],p->eps[i][1][3]));
+      */
     }
 
   for(i=0; i<NC; i++)

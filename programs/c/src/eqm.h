@@ -118,33 +118,6 @@ uint solve_eqm(); // solves for the deterministic equilibrium
 void calc_welfare(eqm * e, const params * p);
 
 // inlined equilibrium equations
-/*
-static inline double mkt_clear_k(const params * p, const eqm * e, uint t, uint i, uint s)
-{
-  //double retval = (e->k_t[t][i][s] - e->kd_t[t][i][s])/e->k_t[t][i][s];
-  double retval = (e->k_t[t][i][s] - e->kd_t[t][i][s]);
-  return retval;
-}
-*/
-
-/*
-static inline double mkt_clear_q2(const params * p, const eqm * e, uint t, uint i, uint s, uint j)
-{
-  //double retval = (e->q2_t[t][i][s][j] - e->q2s_t[t][i][s][j])/e->q2_t[t][i][s][j];
-  double retval = (e->q2_t[t][i][s][j] - e->q2s_t[t][i][s][j]);
-  return retval;
-}
-
-static inline double mkt_clear_m2(const params * p, const eqm * e, uint t, uint i, uint s, uint j)
-{
-  //double retval = (e->m2_t[t][i][s][j] - e->m2s_t[t][i][s][j])/e->m2_t[t][i][s][j];
-  double retval = (e->m2_t[t][i][s][j] - e->m2s_t[t][i][s][j]);
-  
-  return retval;
-}
-*/
-
-// inlined equilibrium equations
 static inline double mpk_rk(const params * p, const eqm * e, uint t, uint i, uint s)
 {
   if(t>=(NT-1) || k_adj_cost==0)
@@ -235,11 +208,8 @@ static inline double mkt_clear_q(const params * p, const eqm * e, uint t, uint i
 
 static inline double mucs_mucr(const params * p, const eqm * e, uint t, uint i, uint s, uint r)
 {
-  if(s==CNS)
-    return e->c_t[t][i][s];
-  else
-    return p->eps[i][0][s]*pow(e->c_t[t][i][s],p->rho-1.0)/e->p_t[t][i][s]
-      - p->eps[i][0][r]*pow(e->c_t[t][i][r],p->rho-1.0)/e->p_t[t][i][r];
+  return p->eps[i][0][s]*pow(e->c_t[t][i][s],p->rho-1.0)/e->p_t[t][i][s]
+    - p->eps[i][0][r]*pow(e->c_t[t][i][r],p->rho-1.0)/e->p_t[t][i][r];
 }
 
 static inline double muc_mul(const params * p, const eqm * e, uint t, uint i)
@@ -293,8 +263,8 @@ static inline double euler(const params * p, const eqm * e, uint t, uint i)
 				     p->rho,
 				     p->phi[i],
 				     p->psi,
-				     2)
-		    - p->beta[i] * e->cpi_t[t+1][0] * (e->p_t[t][i][2]/e->p_t[t+1][i][2])
+				     SVC)
+		    - p->beta[i] * e->cpi_t[t+1][0] * (e->p_t[t][i][SVC]/e->p_t[t+1][i][SVC])
 		    * muc(
 			  e->c_t[t+1][i],
 			  e->ll_t[t+1][i],
@@ -303,7 +273,7 @@ static inline double euler(const params * p, const eqm * e, uint t, uint i)
 			  p->rho,
 			  p->phi[i],
 			  p->psi,
-			  2));
+			  SVC));
 }
 
 static inline double bop(const params * p, const eqm * e, uint t, uint i)
