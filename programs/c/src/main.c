@@ -33,37 +33,37 @@ uint parse_args(int argc, char **argv)
 	if(s==0)
 	  {
 	    target_sector_flag=0;
-	    fprintf(logfile,"\n-Upstream/hi only\n");
+	    fprintf(logfile,"Upstream/hi only\n");
 	  }
 	else if(s==1)
 	  {
 	    target_sector_flag=1;
-	    fprintf(logfile,"\n-Upstream/lo only\n");
+	    fprintf(logfile,"Upstream/lo only\n");
 	  }
 	else if(s==2)
 	  {
 	    target_sector_flag=2;
-	    fprintf(logfile,"\n-Upstream/all\n");
+	    fprintf(logfile,"Upstream/all\n");
 	  }
 	else if(s==3)
 	  {
 	    target_sector_flag=3;
-	    fprintf(logfile,"\n-Downstream/hi only\n");
+	    fprintf(logfile,"Downstream/hi only\n");
 	  }
 	else if(s==4)
 	  {
 	    target_sector_flag=4;
-	    fprintf(logfile,"\n-Downstream/lo only\n");
+	    fprintf(logfile,"Downstream/lo only\n");
 	  }
 	else if(s==5)
 	  {
 	    target_sector_flag=5;
-	    fprintf(logfile,"\n-Downstream/all\n");
+	    fprintf(logfile,"Downstream/all\n");
 	  }
 	else if(s==6)
 	  {
 	    target_sector_flag=6;
-	    fprintf(logfile,"\n-All goods\n");
+	    fprintf(logfile,"All goods\n");
 	  }
 	else
 	  {

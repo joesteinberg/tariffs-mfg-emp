@@ -37,7 +37,7 @@
 #define FIN 0
 #define INT 1
 
-#define NT 50 // time periods until convergence
+#define NT 100 // time periods until convergence
 
 
 

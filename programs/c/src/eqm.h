@@ -50,6 +50,8 @@ typedef struct
 
   double y_t[NT+1][NC][NS];
   double py_t[NT+1][NC][NS];
+  double rks_t[NT+1][NC][NS];
+  double pm2s_t[NT+1][NC][NS];
   double va_t[NT+1][NC][NS];
   double rva_t[NT+1][NC][NS];
   double md_t[NT+1][NC][NS][NS-1];

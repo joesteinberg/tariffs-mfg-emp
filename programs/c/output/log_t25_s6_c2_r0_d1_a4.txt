@@ -1,0 +1,51 @@
+
+----------------------------------------------------------------------
+
+Tariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions
+Joseph Steinberg, University of Toronto
+
+----------------------------------------------------------------------
+
+Setting up environment...
+
+Model scenario:
+-Tariff rate: 25pct
+-Targeted sector: All goods
+-Targeted country: China + rest of world
+-Retaliation: No
+-Duration: Transitory
+-Adjustment costs: Labor + capital + supply chains
+
+Parallel processing using 128 OMP threads
+----------------------------------------------------------------------
+
+Solving for free-trade benchmark...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 4.83e-13, 68	min = -2.27e-13, 1
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
+
+	Initializing solver on 19554-variable system...
+		Initialization complete. Time = 7.00
+		1, 23 secs	max = 5.48e-11, 3773	min = -9.59e-11, 458
+	Finished: success. Time = 33.00, iter = 1, sum |f| = 2.58242e-09
+
+Solving for equilibrium with tariffs...
+
+	Initializing solver on 19554-variable system...
+		Initialization complete. Time = 6.00
+		1, 23 secs	max = 1.77e-02, 426	min = -7.86e-02, 263
+		2, 24 secs	max = 1.00e-04, 619	min = -1.63e-04, 263
+		3, 23 secs	max = 5.38e-09, 19306	min = -5.63e-09, 8971
+	Finished: success. Time = 79.00, iter = 3, sum |f| = 3.22211e-07
+Short run trade elasticities:
+Up-hi: 0.4205
+Up-lo: 0.3560
+Dn-hi: 0.3994
+Dn-lo: 0.3528
+
+----------------------------------------------------------------------
+
+Program complete!
+

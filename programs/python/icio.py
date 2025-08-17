@@ -2,23 +2,34 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import pandas as pd
+
 import locale
 locale.setlocale(locale.LC_ALL,'en_US.utf8')
 
 import matplotlib as mpl
 mpl.use('Agg')
-mpl.rc('font',**{'family':'serif','serif':['Palatino'],'size':16})
-mpl.rc('font',size=10)
-mpl.rc('text', usetex=True)
-mpl.rc('lines',linewidth=1.5)
-#mpl.rc('savefig',bbox='tight')
-mpl.rc('savefig',format='pdf')
-mpl.rc('font',**{'family':'serif','serif':['Palatino'],'size':10})
-mpl.rc('font',size=10)
 
-colors=['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00']
-hatches=[None,'x','/','.','+']
 import matplotlib.pyplot as plt
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Roboto'] + plt.rcParams['font.sans-serif']
+plt.rcParams['font.weight'] = 365
+
+import seaborn as sns
+
+colors=['#e41a1c','#377eb8','#984ea3','#4daf4a','#ff7f00','#ffff33']
+hatches=[None,'x','/','.','+']
+
+vmax = lambda v: [max(x,0.0) for x in v]
+vmin = lambda v: [min(x,0.0) for x in v]
+
+def which_bottom(bottom_p, bottom_n, data):
+    bottom=np.zeros(len(data))
+    for i in range(len(data)):
+        bottom[i]=bottom_p[i] if data[i]>0.0 else bottom_n[i]
+    return bottom
+
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.preprocessing import StandardScaler
 
 #############################################################################
 print('Processing the raw data...')
@@ -75,8 +86,10 @@ def which_region(country):
 melted['row_region'] = melted.row_country.apply(which_region)
 melted['col_region'] = melted.col_country.apply(which_region)
 
+melted.loc[ (melted.col_ind=='INVNT') & (melted.value<0),'value'] = 0
 
-# aggregate within services sector
+
+# aggregate non-mfg sectors
 def which_sector(ind):
     if ind in ['TOT','OUT']:
         return 'GO'
@@ -92,7 +105,7 @@ def which_sector(ind):
         return 'CONS'
     else:
         return 'SVCS'
-
+    
 melted['row_sector'] = melted.row_ind.apply(which_sector)
 melted['col_sector'] = melted.col_ind.apply(which_sector)
 
@@ -130,33 +143,16 @@ U.values[:] = np.matmul(np.linalg.inv(np.eye(U.shape[0]) - Delta), np.ones((U.sh
 U.columns = U.columns.droplevel(0)
 U.columns = ['U']
 U = U.reset_index()
-U = U.loc[~(U.row_sector.isin(['SVCS','CONS'])),:]
+U = U.loc[~(U.row_sector.isin(['AGRI','MINE','SVCS','CONS'])),:]
 
 # display results
 U = U.rename(columns={'row_sector':'ind'})
 names = pd.read_csv('../../data/industry_names_elasts.csv')[['ind','name']]
 U = pd.merge(left=U,right=names,how='left',on='ind')
 U2 = U.groupby(['ind','name'])['U'].mean().sort_values(ascending=False).reset_index()
-U2['upstream'] = np.where(U2.U > U2.U.median(),True,False)
-print(U2)
+#U2['upstream'] = np.where(U2.U > U2.U.median(),True,False)
+print(U2[['ind','name','U']].sort_values(by='U'))
 
-# link back to main dataframe
-agged = pd.merge(left=agged,
-                 right=U2.rename(columns={'ind':'row_sector','upstream':'row_upstream'})[['row_sector','row_upstream']],
-                 how='left',on='row_sector')
-
-agged = pd.merge(left=agged,
-                 right=U2.rename(columns={'ind':'col_sector','upstream':'col_upstream'})[['col_sector','col_upstream']],
-                 how='left',on='col_sector')
-
-# temporary placeholder for aggregated sector. we need the old one for a bit still
-agged['col_sector2'] = agged.col_sector
-agged['row_sector2'] = agged.row_sector
-agged.loc[agged.col_upstream==True,'col_sector2']='UP'
-agged.loc[agged.col_upstream==False,'col_sector2']='DN'
-agged.loc[agged.row_upstream==True,'row_sector2']='UP'
-agged.loc[agged.row_upstream==False,'row_sector2']='DN'
-agged = agged.drop(['col_upstream','row_upstream'],axis=1)
 
 #############################################################################
 print('\nComputing trade elasticities...')
@@ -172,17 +168,74 @@ trd = merged[ (merged.col_region!=merged.row_region) &
 
 # first, compute weighted average elasticity by industry
 wavg = lambda x: np.average(x,weights=trd.loc[x.index,'value'])
-e1 = trd.groupby(['row_sector2','row_sector'])[['elast_CP','elast_BFE']].agg(wavg).reset_index()
+e = trd.groupby(['row_sector'])[['elast_CP','elast_BFE']].agg(wavg).reset_index()
 
-# now, compute median in each up/downstream sector, and divide those into high and low elasticity groups
-e1['med'] = e1.groupby('row_sector2')['elast_CP'].transform('median')
-e1['grp'] = ''
-e1.loc[e1.elast_CP>e1.med,'grp'] = '-HI'
-e1.loc[e1.elast_CP<=e1.med,'grp'] = '-LO'
-e1['row_sector3'] = e1.row_sector2 + e1.grp
+#############################################################################
+print('\nDefining sectoral aggregation using hierarchical clustering...')
 
-# last, merge these new groups back on and redo weighted averaging
-merged = pd.merge(left=agged,right=e1[['row_sector','row_sector3','elast_CP']],how='left',on='row_sector')
+scheme = e.loc[:,['row_sector','elast_CP']]
+scheme = pd.merge(left=scheme,right=U2.rename(columns={'ind':'row_sector'}),how='left',on='row_sector')
+scheme2 = scheme.loc[~(scheme.name.isnull()),['row_sector','name','elast_CP','U']]
+
+tmp = np.log(scheme2.elast_CP)
+X = np.zeros((len(scheme2),2))
+X[:,0] = scheme2.U
+X[:,1] = tmp
+
+# Cluster on the first dimension
+X_dim1 = X[:,0].reshape(-1, 1)
+    
+# Scale the data if necessary 
+scaler_dim1 = StandardScaler()
+X_dim1_scaled = scaler_dim1.fit_transform(X_dim1)
+
+# Apply Agglomerative Clustering
+n_clusters_dim1 = 2
+clustering_dim1 = AgglomerativeClustering(n_clusters=n_clusters_dim1)
+labels_dim1 = clustering_dim1.fit_predict(X_dim1_scaled)
+
+# Cluster on the second dimension within each cluster from the first dimension
+final_labels = np.zeros(len(X), dtype=int)
+current_cluster_id = 0
+
+for i in range(n_clusters_dim1):
+    # Get data points belonging to the current cluster from the first dimension
+    cluster_indices = np.where(labels_dim1 == i)[0]
+    X_dim2_subset = X[cluster_indices,1].reshape(-1, 1)
+
+    if len(X_dim2_subset) > 0:
+        scaler_dim2 = StandardScaler()
+        X_dim2_subset_scaled = scaler_dim2.fit_transform(X_dim2_subset)
+        
+        # Apply Agglomerative Clustering
+        n_clusters_dim2 = 2
+        clustering_dim2 = AgglomerativeClustering(n_clusters=n_clusters_dim2)
+        labels_dim2_subset = clustering_dim2.fit_predict(X_dim2_subset_scaled)
+
+        # Assign new, unique cluster IDs
+        for j, original_index in enumerate(cluster_indices):
+            final_labels[original_index] = current_cluster_id + labels_dim2_subset[j]
+        current_cluster_id += n_clusters_dim2
+
+scheme2['row_sector_num'] = final_labels
+
+def which_sector_name(n):
+    if n==0:
+        return 'UP-HI'
+    elif n==1:
+        return 'UP-LO'
+    elif n==2:
+        return 'DN-LO'
+    elif n==3:
+        return 'DN-HI'
+
+scheme2['row_sector3'] = scheme2.row_sector_num.apply(which_sector_name)
+
+# print the resulting classification
+print(scheme2.sort_values(by='row_sector3'))
+
+# compute weighted average elasticities for each group
+merged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3','elast_CP']],how='left',on='row_sector')
                    
 trd = merged[ (merged.col_region!=merged.row_region) &
               (merged.row_region!='TOT') &
@@ -195,27 +248,21 @@ wavg = lambda x: np.average(x,weights=trd.loc[x.index,'value'])
 e2 = trd.groupby(['row_sector3'])[['elast_CP']].agg(wavg).reset_index()
 print(e2.loc[~(e2.elast_CP.isnull()),:])
 
-# finally, merge the new sectoral aggregation scheme back to the main dataset
-scheme = pd.merge(left=e1[['row_sector','row_sector3']],
-                  right=names.rename(columns={'ind':'row_sector'}),
-                  how='left',on='row_sector').sort_values(by='row_sector3')
-
-print('\nCreating final aggregation scheme...')
-print(scheme.loc[~(scheme.name.isnull()),:])
-
+# merge the groups back on to the main dataset
 # UP-HI = OIL
 # UP-LO = STEEL
 # DN-HI = CONSUMER GOODS
 # DN-LO = MACHINERY & AUTOS
-
-agged = pd.merge(left=agged,right=scheme,how='left',on='row_sector')
-agged = pd.merge(left=agged,right=scheme.rename(columns={'row_sector':'col_sector','row_sector3':'col_sector3'}),how='left',on='col_sector')
+agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']],how='left',on='row_sector')
+agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']].rename(columns={'row_sector':'col_sector','row_sector3':'col_sector3'}),how='left',on='col_sector')
+agged.loc[agged.row_sector3.isnull(),'row_sector3'] = agged.loc[agged.row_sector3.isnull(),'row_sector']
+agged.loc[agged.col_sector3.isnull(),'col_sector3'] = agged.loc[agged.col_sector3.isnull(),'col_sector']
 
 #############################################################################
 print('\nComputing sectoral employment shares...')
 
 lc = pd.read_excel('../../data/ComponentsOfVa.xlsx',sheet_name='UVCT2-A',skiprows=7).rename(columns={'ICIO Industry Code':'ind','2023':'lcomp'})
-lc = lc.loc[~(lc.ind.isnull()),['ind','lcomp']]
+lc = lc.loc[~(lc.ind.isnull()),['ind','lcomp']].groupby('ind').sum().reset_index()
 lc['lshare'] = lc.lcomp/lc.lcomp.sum()
 
 icio_inds = list(scheme.row_sector)
@@ -225,23 +272,115 @@ def find_sector(bea_ind):
     else:
         for i in icio_inds:
             if i in bea_ind:
-                return scheme.loc[scheme.row_sector==i,'row_sector3'].values[0]
+                return scheme2.loc[scheme.row_sector==i,'row_sector3'].values[0]
         return 'SVCS'
 
 lc['sector'] = lc.ind.apply(find_sector)
-print(lc.groupby('sector').lshare.sum())
+lc2=lc.groupby('sector').lshare.sum()
+ltot = lc2['UP-HI'] + lc2['UP-LO'] + lc2['DN-HI'] + lc2['DN-LO']
+
+print(lc2)
+
+#############################################################################
+print('\nCreating sector summary figure + table...')
+
+# write table with names
+with open('output/sectors.tex','w') as file:
+        
+    file.write('\\begin{tabular}{lp{6cm}cccc}')
+    file.write('\\toprule\n')
+    file.write('Sector & Industries & Upstreamness & \\makecell{Trade\\\\elasticity} & \\makecell{Share of\\\\mfg. emp.}\\\\\n')
+    file.write('\\midrule\n')
+
+    file.write("\\textcolor[HTML]{%s}{``Oil''} & "%(colors[0][1:]))
+    cnt=0
+    names=scheme2.loc[scheme2.row_sector_num==0,'name'].values
+    for n in names:
+        cnt += 1
+        file.write('%s'%n)
+        if(cnt<len(names)):
+           file.write(', ')
+           
+    file.write('& %0.1f' % (scheme2.loc[scheme2.row_sector_num==0,'U'].mean()))
+    file.write('& %0.1f' % (e2.loc[e2.row_sector3=='UP-HI','elast_CP'].values[0]))
+    file.write('& %0.1f\\\\\n' % (100*lc2['UP-HI']/ltot))
+
+    file.write("\\textcolor[HTML]{%s}{``Steel''} & "%(colors[1][1:]))
+    cnt=0
+    names=scheme2.loc[scheme2.row_sector_num==1,'name'].values
+    for n in names:
+        cnt += 1
+        file.write('%s'%n)
+        if(cnt<len(names)):
+           file.write(', ')
+
+    file.write('& %0.1f' % (scheme2.loc[scheme2.row_sector_num==1,'U'].mean()))
+    file.write('& %0.1f' % (e2.loc[e2.row_sector3=='UP-LO','elast_CP'].values[0]))
+    file.write('& %0.1f\\\\\n' % (100*lc2['UP-LO']/ltot))
+
+    file.write("\\textcolor[HTML]{%s}{``Toys''} & "%(colors[3][1:]))
+    cnt=0
+    names=scheme2.loc[scheme2.row_sector_num==3,'name'].values
+    for n in names:
+        cnt += 1
+        file.write('%s'%n)
+        if(cnt<len(names)):
+           file.write(', ')
+
+    file.write('& %0.1f' % (scheme2.loc[scheme2.row_sector_num==3,'U'].mean()))
+    file.write('& %0.1f' % (e2.loc[e2.row_sector3=='DN-HI','elast_CP'].values[0]))
+    file.write('& %0.1f\\\\\n' % (100*lc2['DN-HI']/ltot))
+
+    file.write("\\textcolor[HTML]{%s}{``Cars''} & "%(colors[2][1:]))
+    cnt=0
+    names=scheme2.loc[scheme2.row_sector_num==2,'name'].values
+    for n in names:
+        cnt += 1
+        file.write('%s'%n)
+        if(cnt<len(names)):
+           file.write(', ')
+
+    file.write('& %0.1f' % (scheme2.loc[scheme2.row_sector_num==2,'U'].mean()))
+    file.write('& %0.1f' % (e2.loc[e2.row_sector3=='DN-LO','elast_CP'].values[0]))
+    file.write('& %0.1f\\\\\n' % (100*lc2['DN-LO']/ltot))
+
+    file.write('\\bottomrule\n')
+    file.write('\\end{tabular}')
+
+# figure
+scheme2['log_e'] = np.log(scheme2.elast_CP)
+scheme3 = pd.merge(left=scheme2,right=lc.rename(columns={'ind':'row_sector'})[['row_sector','lshare']],how='left',on='row_sector')
+
+# figure
+fig, ax = plt.subplots(figsize=(3.25,3.85),tight_layout = {'pad': 0})
+ax.tick_params(axis='x', labelsize=10)
+ax.tick_params(axis='y', labelsize=10)
+ax.yaxis.label.set_size(12)
+sns.despine()
+ax.scatter(scheme3.U,scheme3.log_e, c=[colors[k] for k in final_labels])
+
+tmpv = 0.5*scheme3[scheme3.row_sector_num<2]['U'].min() +  0.5*scheme3[scheme3.row_sector_num>=2]['U'].max()
+ax.axvline(tmpv,color='black',lw=1)
+
+tmph = np.log(0.5*scheme3.loc[scheme3.row_sector_num==3,'elast_CP'].min() + 0.5*scheme3.loc[scheme3.row_sector_num==2,'elast_CP'].max())
+ax.plot([scheme3.U.min(),tmpv],[tmph,tmph],color='black',lw=1)
+
+tmph = np.log(0.5*scheme3.loc[scheme3.row_sector_num==0,'elast_CP'].min() + 0.5*scheme3.loc[scheme3.row_sector_num==1,'elast_CP'].max())
+ax.plot([tmpv,scheme3.U.max()],[tmph,tmph],color='black',lw=1)
+
+yl = ax.get_yticks()
+ax.set_yticklabels([ '%0.0f'%(np.exp(y)) for y in yl])
+ax.set_xlabel('Upstreamness')
+ax.set_ylabel('Trade elasticity')
+fig.tight_layout()
+plt.savefig('output/fig_data_upstream_vs_elast.pdf')
 
 #############################################################################
 print('\nAggregating IO matrix across regions and sectors...')
 
 # now we can overwrite the aggregated sector
-agged['row_sector'] = agged['row_sector2']
-agged['col_sector'] = agged['col_sector2']
-agged.loc[~(agged.row_sector3.isnull()),'row_sector'] = agged.loc[~(agged.row_sector3.isnull()),'row_sector3']
-agged.loc[~(agged.col_sector3.isnull()),'col_sector'] = agged.loc[~(agged.col_sector3.isnull()),'col_sector3']
-
-#print(agged[['row_sector','row_sector2','row_sector3']].drop_duplicates())
-#print(agged[['row_sector','row_sector2','row_sector3']].drop_duplicates())
+agged['row_sector'] = agged['row_sector3']
+agged['col_sector'] = agged['col_sector3']
 
 agged2 = agged.groupby(['row_region','row_sector','col_use','col_region','col_sector'])['value'].sum().reset_index()
 agged2 = agged2.sort_values(by=['row_region','row_sector','col_use','col_region','col_sector'])
@@ -267,15 +406,6 @@ agged2.loc[agged2.col_sector=='DN-HI','col_sector'] = '3-DOWNSTREAM-HI'
 agged2.loc[agged2.col_sector=='DN-LO','col_sector'] = '4-DOWNSTREAM-LO'
 agged2.loc[agged2.col_sector=='SVCS','col_sector'] = '5-SERVICES'
 agged2.loc[agged2.col_sector=='CONS','col_sector'] = '6-CONSTRUCTION'
-
-#agged2.loc[agged2.row_sector=='UP','row_sector'] = '1-UPSTREAM'
-#agged2.loc[agged2.row_sector=='DN','row_sector'] = '2-DOWNSTREAM'
-#agged2.loc[agged2.row_sector=='SVCS','row_sector'] = '3-SERVICES'
-#agged2.loc[agged2.row_sector=='CONS','row_sector'] = '4-CONSTRUCTION'
-#agged2.loc[agged2.col_sector=='UP','col_sector'] = '1-UPSTREAM'
-#agged2.loc[agged2.col_sector=='DN','col_sector'] = '2-DOWNSTREAM'
-#agged2.loc[agged2.col_sector=='SVCS','col_sector'] = '3-SERVICES'
-#agged2.loc[agged2.col_sector=='CONS','col_sector'] = '4-CONSTRUCTION'
 
 # separate into main components in same structure as in NAFTA paper
 intermediates = agged2[(agged2.col_region!='TOT') &
@@ -420,7 +550,7 @@ iomat2 = ras(iomat,rowsums,colsums) # run RAS
 print('Writing output...')
 
 countries = ['USA','CHN','ROW']
-sectors = ['$T_{UH}$','$T_{UL}$','$T_{DH}$','$T_{DL}$','$T_S$','$N_C$']
+sectors = ['$G_{UH}$','$G_{UL}$','$G_{DH}$','$G_{DL}$','$S$','$H$']
 
 def write_iomat_csv(iomat,fname):
     usgdp = iomat[-1,0:ns].sum()
@@ -441,13 +571,6 @@ def write_iomat_latex(iomat,rowsums,colsums,fname):
     Fx=iomat2[0:(nc*ns),((nc*ns)+nc):]
 
     with open(fname + '.tex','w') as file:
-        #file.write('\\begin{landscape}\n')
-        #file.write('\\begin{table}[p]\n')
-        #file.write('\\renewcommand{\\arraystretch}{1.2}\n')
-        #file.write('\\begin{center}\n')
-        #file.write('\\caption{'+caption+', intermediate inputs portion '+units+'}\n')
-        #file.write('\\label{tab:'+label+'_m}\n')
-        #file.write('\\footnotesize\n')
         
         file.write('\\begin{tabular}{cc ')
         for i in range(0,nc*ns):
@@ -526,7 +649,7 @@ def write_iomat_latex(iomat,rowsums,colsums,fname):
                     file.write('&'+tmpstr)
 
                     tmpstr='-'
-                    if Fx[i*ns+ii,j]>1e-6:
+                    if abs(Fx[i*ns+ii,j]>1e-6):
                         tmpstr = locale.format_string('%0.2f',Fx[i*ns+ii,j],grouping=True)
                     file.write('&'+tmpstr)
                 
@@ -574,7 +697,14 @@ write_iomat_latex(iomat2,rowsums,colsums,'output/iomat')
 
 ##################################################################################
 # descriptive tables/figures
-print('Descriptive tables and figures')
+print('Figures summarizing trade flows')
+
+def create_fig():
+    fig, ax = plt.subplots(figsize=(3.25*0.6/0.5,3.85),tight_layout = {'pad': 0})
+    ax.tick_params(axis='both', labelsize=10)
+    ax.yaxis.label.set_size(10)
+    sns.despine()
+    return fig,ax
 
 # intermediate trade
 m_trd =  intermediates.groupby(['col_region','row_region','row_sector'])['M'].sum().reset_index()
@@ -618,9 +748,9 @@ trd = pd.concat([trd,sums])
 trd = trd.sort_values(['region','partner','sector']).reset_index(drop=True)
 
 # merge on value added
-va = output.groupby(['col_region','col_sector'])['VA'].sum().reset_index()
-va.rename(columns={'col_region':'region','col_sector':'sector'},inplace=True)
-trd = pd.merge(left=trd,right=va,how='left',on=['region','sector'])
+go = output.groupby(['col_region','col_sector'])['GO'].sum().reset_index()
+go.rename(columns={'col_region':'region','col_sector':'sector'},inplace=True)
+trd = pd.merge(left=trd,right=go,how='left',on=['region','sector'])
 
 # merge on consumption
 cons = final_demand.groupby(['col_region','row_sector'])['C'].sum().reset_index()
@@ -633,345 +763,241 @@ gdp.rename(columns={'col_region':'region','VA':'GDP'},inplace=True)
 trd = pd.merge(left=trd,right=gdp,how='left',on=['region'])
 trd.loc[trd.sector=='TOT','VA']=trd.loc[trd.sector=='TOT','GDP']
 
-# # make latex table
-# trd=trd.groupby(['region','partner','sector']).mean().reset_index()
-
-# sector_names = {'1-UPSTREAM':'Upstream goods',
-#                 '2-DOWNSTREAM':'Downstream goods',
-#                 '3-SERVICES':'Services',
-#                 '4-CONSTRUCTION':'Construction',
-#                 'TOT':'Total'}
-
-# country_names = {'1-USA':'United States',
-#                  '2-CHN':'China',
-#                  '3-ROW':'Rest of world',
-#                  'TOT':'Total'}
-# partners = {'1-USA':['TOT','2-CHN','3-ROW'],'2-CHN':['TOT','1-USA','3-ROW'],'3-ROW':['TOT','1-USA','2-CHN']}
-# panels = {'1-USA':'(a)','2-CHN':'(b)','3-ROW':'(c)'}
-
-# def fmt_num(x):
-#     if np.abs(x)<1.0e-6:
-#         return '& -'
-#     else:
-#         return '& %0.2f'%x
-
-# with open('output/icio_summary.tex','w') as file:
-#     file.write('\\begin{tabular}{lccccc}\n')
-#     file.write('\\toprule\n')
-#     file.write('\\makecell{Quantity} & ')
-
-#     file.write('\\makecell{Upstream\\\\goods} & ')
-#     file.write('\\makecell{Downstream\\\\goods} &')
-#     file.write('\\makecell{centering Services} &')
-#     file.write('\\makecell{centering Construction} & ')
-#     file.write('\\makecell{centering Total}\\\\\n')
-#     file.write('\\midrule\n')
-
-#     for c in ['1-USA','2-CHN','3-ROW']:
-#         file.write('\\multicolumn{5}{l}{\\textit{'+panels[c]+' '+country_names[c]+'}}\\\\\n')
-#         mask=trd.region==c
-
-#         file.write('Value added')
-#         mask2 = np.logical_and(mask,trd.partner=='TOT')
-#         for s in sector_names.keys():
-#             mask3=np.logical_and(mask2,trd.sector==s)
-#             masked=trd[mask3]
-#             val = 100.0*masked['VA']/masked['GDP']
-#             file.write(fmt_num(val.iloc[0]))
-#         file.write('\\\\\n')
-        
-#         for p in partners[c]:
-#             mask2=np.logical_and(mask,trd.partner==p)
-#             if p=='TOT':
-#                 file.write('Exports')
-#             else:
-#                 file.write('\quad to ' + country_names[p])
-#             for s in sector_names.keys():
-#                 mask3=np.logical_and(mask2,trd.sector==s)
-#                 masked=trd[mask3]
-#                 val = 100.0*(masked['ex'])/masked['GDP']
-#                 file.write(fmt_num(val.iloc[0]))
-#             file.write('\\\\\n')
-
-#         for p in partners[c]:
-#             mask2=np.logical_and(mask,trd.partner==p)
-#             if p=='TOT':
-#                 file.write('Imports')
-#             else:
-#                 file.write('\quad from ' + country_names[p])
-#             for s in sector_names.keys():
-#                 mask3=np.logical_and(mask2,trd.sector==s)
-#                 masked=trd[mask3]
-#                 val = 100.0*(masked['im'])/masked['GDP']
-#                 file.write(fmt_num(val.iloc[0]))
-#             file.write('\\\\\n')
-
-#         for p in partners[c]:
-#             mask2=np.logical_and(mask,trd.partner==p)
-#             if p=='TOT':
-#                 file.write('Net exports')
-#             else:
-#                 file.write('\quad with ' + country_names[p])
-#             for s in sector_names.keys():
-#                 mask3=np.logical_and(mask2,trd.sector==s)
-#                 masked=trd[mask3]
-#                 val = 100.0*masked['tb']/masked['GDP']
-#                 file.write(fmt_num(val.iloc[0]))
-#             file.write('\\\\\n')
-
-#         if(c!='ROW'):
-#             file.write('\\\\\n')
-
-#     file.write('\\bottomrule\n')
-#     file.write('\\end{tabular}\n')
-
-# figures
-sector_names = {'1-UPSTREAM-HI':'Up-hi',
-                '2-UPSTREAM-LO':'Up-lo',
-                '3-DOWNSTREAM-HI':'Down-hi',
-                '4-DOWNSTREAM-LO':'Down-lo',
-                '5-SERVICES':'Svcs',
-                '6-CONSTRUCTION':'Cnstr'}
-
-country_names = {'1-USA':'United States',
-                 '2-CHN':'China',
-                 '3-ROW':'Rest of world',}
-
-sectors = list(sector_names.keys())
-snames = [sector_names[s] for s in sectors]
-wrapped_snames= [ s.replace(' ', '\n') for s in snames ]
-
-countries = list(country_names.keys())
-cnames = [country_names[c] for c in countries]
-
-partners = countries
-pnames = cnames
-
-
-df=trd.loc[trd.sector!='TOT',:].reset_index(drop=True)
+# restrict data to USA
+df=trd.loc[(trd.sector!='TOT') & (trd.region=='1-USA'),:].reset_index(drop=True)
 df['trd']=df.ex+df.im
 df['trd_M']=df.ex_M+df.im_M
+df['nx'] = df.ex-df.im
+df['nx_M'] = df.ex_M-df.im_M
+df['nx_F'] = df.ex_F-df.im_F
 df['trd2'] = df.trd
 df['im2'] = df.im
 df['ex2'] = df.ex
-df['va2'] = df.VA
+df['nx2'] = df.nx
+df['im2_M'] = df.im_M
+df['ex2_M'] = df.ex_M
+df['nx2_M'] = df.nx_M
+df['im2_F'] = df.im_F
+df['ex2_F'] = df.ex_F
+df['nx2_F'] = df.nx_F
 
-#print(df.ex_M)
-for col in cols:
-    if col in ['trd','trd_M','im_M','ex_M','im','ex']:
-        df[col]=100*df[col]/df.VA
-    else:
+
+# normalize by sectoral value added and GDP
+for col in df.columns:
+    if col in ['ex_M','ex_F','ex',
+               'im_M','im_F','im',
+               'nx_M','nx_F','nx']:
+        df[col]=100*df[col]/df.GO
+    elif col in ['ex2_M','ex2_F','ex2',
+                 'im2_M','im2_F','im2',
+                 'nx2_M','nx2_F','nx2']:
         df[col]=100*df[col]/df.GDP
 
-#print(df.ex_M)
+sectors = {'1-UPSTREAM-HI':'Oil',
+           '2-UPSTREAM-LO':'Steel',
+           '3-DOWNSTREAM-HI':'Toys',
+           '4-DOWNSTREAM-LO':'Cars',
+           '5-SERVICES':'Svcs',
+           '6-CONSTRUCTION':'Const'}
 
-cols=['tb','ex','im','ex_M','im_M','trd2','trd']
-avg_s = df[df.partner!='TOT'].groupby(['region','sector'])[cols].sum().reset_index()
-#avg_s = df.groupby(['region','sector']).sum().reset_index()
+slist=list(sectors.keys())
+snames=[sectors[s] for s in sectors.keys()]
 
-avg_p = df[df.partner!='TOT'].groupby(['region','partner'])[cols].sum().reset_index()
-#avg_va = df.groupby(['region','sector'])['va2'].mean().reset_index()
+partners = {'2-CHN':'China',
+            '3-ROW':'Rest of world'}
 
-# figure 2: sectoral trade relative to VA
-width=0.25
-fig,axes=plt.subplots(2,2,figsize=(7,7),sharex='row',sharey=False)
+pnames = [partners[p] for p in partners.keys()]
 
-# (a) sectoral gross imports/GDP
-inds=np.arange(len(sectors[:-1]))
+#-------------------------------------------------------------------
+# stacked bar plots of trade composition across countries, by sector
 
-for i in range(len(countries)):
-    data=np.zeros(len(inds))
-    for j in range(len(sectors[:-1])):
-        data[j]=avg_s.im[np.logical_and(avg_s.region==countries[i],
-                                         avg_s.sector==sectors[j])].values[0]          
-    if i==0:
-        p1=axes[0,0].bar(inds,data,align='edge',width=width,color=colors[0],hatch=hatches[0],linewidth=1,alpha=0.99,edgecolor='black',)
-    elif i==1:
-        p2=axes[0,0].bar(inds+width,data,align='edge',width=width,color=colors[1],hatch=4*hatches[1],linewidth=1,alpha=0.99,edgecolor='black',)
-    elif i==2:
-        p3=axes[0,0].bar(inds+2*width,data,align='edge',width=width,color=colors[2],hatch=4*hatches[2],linewidth=1,alpha=0.99,edgecolor='black',)
+cols=['ex','im','nx','ex2','im2','nx2']
+ylims=[(0,80),(0,80),(-80,10),(0,6),(0,6),(-2,1.5)]
+df2 = df[df.partner!='TOT'].groupby(['sector','partner'])[cols].sum().reset_index()
+width=0.75
 
-axes[0,0].set_ylabel('percent sectoral value added')
-axes[0,0].set_title('(a) Total imports',y=1.04,size=10)
-axes[0,0].set_xticks(inds+width*1.5)
-axes[0,0].set_xticklabels(wrapped_snames[:-1])
-axes[0,0].set_xlim(-0.25,5.0)
+fcnt=0
+for c in cols:
+    fig,ax=create_fig()
 
-# (b) sectoral intermediate imports/GDP
-inds=np.arange(len(sectors[:-1]))
+    data = {}
+    for partner,name in partners.items():
+        data[name] = np.array([df2[c][(df2.partner==partner) & (df2.sector==s)].values[0] for s in slist[0:-1]])
 
-for i in range(len(countries)):
-    data=np.zeros(len(inds))
-    for j in range(len(sectors[:-1])):
-        data[j]=avg_s.im_M[np.logical_and(avg_s.region==countries[i],
-                                           avg_s.sector==sectors[j])].values[0]
-          
-    if i==0:
-        p1=axes[0,1].bar(inds,data,align='edge',width=width,color=colors[0],hatch=hatches[0],linewidth=1,alpha=0.99,edgecolor='black',)
-    elif i==1:
-        p2=axes[0,1].bar(inds+width,data,align='edge',width=width,color=colors[1],hatch=4*hatches[1],linewidth=1,alpha=0.99,edgecolor='black',)
-    elif i==2:
-        p3=axes[0,1].bar(inds+2*width,data,align='edge',width=width,color=colors[2],hatch=4*hatches[2],linewidth=1,alpha=0.99,edgecolor='black',)
+    bottom_pos=np.zeros(len(slist)-1)
+    bottom_neg=np.zeros(len(slist)-1)
 
-axes[0,1].set_title('(b) Intermediate imports',y=1.04,size=10)
-axes[0,1].legend([p1,p2,p3],countries,loc='upper right',prop={'size':8})
+    bcnt=0
+    for name, values in data.items():
+        bottom=which_bottom(bottom_pos,bottom_neg,values)
+        ax.bar(snames[:-1], values, width, label=name, bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=1)
+        bottom_pos=bottom_pos+vmax(values)
+        bottom_neg=bottom_neg+vmin(values)
+        bcnt += 1
 
-# (c) sectoral gross imports/GDP
-inds=np.arange(len(sectors[:-1]))
+    if(bottom_neg.min()<1e-6):
+        ax.axhline(0.0,color='black',ls='-',lw=1)
+               
+    ax.set_ylim(ylims[fcnt][0],ylims[fcnt][1])
 
-for i in range(len(countries)):
-    data=np.zeros(len(inds))
-    for j in range(len(sectors[:-1])):
-        data[j]=avg_s.ex[np.logical_and(avg_s.region==countries[i],
-                                         avg_s.sector==sectors[j])].values[0]          
-    if i==0:
-        p1=axes[1,0].bar(inds,data,align='edge',width=width,color=colors[0],hatch=hatches[0],linewidth=1,alpha=0.99,edgecolor='black',)
-    elif i==1:
-        p2=axes[1,0].bar(inds+width,data,align='edge',width=width,color=colors[1],hatch=4*hatches[1],linewidth=1,alpha=0.99,edgecolor='black',)
-    elif i==2:
-        p3=axes[1,0].bar(inds+2*width,data,align='edge',width=width,color=colors[2],hatch=4*hatches[2],linewidth=1,alpha=0.99,edgecolor='black',)
-
-axes[1,0].set_ylabel('percent sectoral value added')
-axes[1,0].set_title('(c) Total exports',y=1.04,size=10)
-axes[1,0].set_xticks(inds+width*1.5)
-axes[1,0].set_xticklabels(wrapped_snames[:-1],size=8)
-axes[1,0].set_xlim(-0.25,5.0)
-
-# (d) sectoral intermediate imports/GDP
-inds=np.arange(len(sectors[:-1]))
-
-for i in range(len(countries)):
-    data=np.zeros(len(inds))
-    for j in range(len(sectors[:-1])):
-        data[j]=avg_s.ex_M[np.logical_and(avg_s.region==countries[i],
-                                           avg_s.sector==sectors[j])].values[0]
-          
-    if i==0:
-        p1=axes[1,1].bar(inds,data,align='edge',width=width,color=colors[0],hatch=hatches[0],linewidth=1,alpha=0.99,edgecolor='black',)
-    elif i==1:
-        p2=axes[1,1].bar(inds+width,data,align='edge',width=width,color=colors[1],hatch=4*hatches[1],linewidth=1,alpha=0.99,edgecolor='black',)
-    elif i==2:
-        p3=axes[1,1].bar(inds+2*width,data,align='edge',width=width,color=colors[2],hatch=4*hatches[2],linewidth=1,alpha=0.99,edgecolor='black',)
-
-axes[1,1].set_title('(d) Intermediate exports',y=1.04,size=10)
-axes[1,1].legend([p1,p2,p3],countries,loc='upper right',prop={'size':8})
-fig.subplots_adjust(hspace=0.05,wspace=0.05)
-fig.tight_layout()
-plt.savefig('output/sectoral_trade.pdf')
-plt.clf()
-
-width=0.25
-
-
-# # figure 3: net trade
-
-vmax = lambda v: [max(x,0.0) for x in v]
-vmin = lambda v: [min(x,0.0) for x in v]
-
-def which_bottom(bottom_p, bottom_n, data):
-    bottom=np.zeros(len(data))
-    for i in range(len(data)):
-        bottom[i]=bottom_p[i] if data[i]>0.0 else bottom_n[i]
-    return bottom
-
-fig,axes=plt.subplots(1,2,figsize=(7,3.5),sharex=True,sharey=True)
-
-# (a) by partner
-data=[np.zeros(3) for p in countries]
-inds=range(len(countries))
-
-for i in inds:
-    p=partners[i]
-    for j in inds[0:3]:
-        c=countries[j]
-        tmp=avg_p.tb[np.logical_and(avg_p.partner==p,avg_p.region==c)]
-        if(len(tmp)>0):
-            data[i][j]=tmp.values[0]
-
-bottom_pos=np.zeros(3)
-bottom_neg=np.zeros(3)
-p1=axes[0].bar(inds[0:3],data[0],
-               color=colors[0],hatch=hatches[0],linewidth=1,align='center',width=0.5,alpha=0.99,edgecolor='black',)
-bottom_pos=bottom_pos+vmax(data[0])
-bottom_neg=bottom_neg+vmin(data[0])
-
-bottom=which_bottom(bottom_pos,bottom_neg,data[1])
-p2=axes[0].bar(inds[0:3],data[1],bottom=bottom,
-               color=colors[1],hatch=4*hatches[1],linewidth=1,align='center',width=0.5,alpha=0.99,edgecolor='black',)
-bottom_pos=bottom_pos+vmax(data[1])
-bottom_neg=bottom_neg+vmin(data[1])
-
-bottom=which_bottom(bottom_pos,bottom_neg,data[2])
-p3=axes[0].bar(inds[0:3],data[2],bottom=bottom,
-               color=colors[2],hatch=4*hatches[2],linewidth=1,align='center',width=0.5,alpha=0.99,edgecolor='black',)
-bottom_pos=bottom_pos+vmax(data[2])
-bottom_neg=bottom_neg+vmin(data[2])
-
-
-axes[0].plot(range(-1,4),np.zeros(len(range(-1,4))),color='black',linestyle='-')
-axes[0].set_xticks(inds)
-axes[0].set_xticklabels(countries)
-#axes[0].set_yticks([-3,0,3,6,9,12])
-#axes[0].set_ylim(-3,12)
-axes[0].set_xlim(-0.5,2.5)
-axes[0].set_ylabel('percent GDP')
-axes[0].set_title('(a) By partner',y=1.04,size=10)
-axes[0].legend([p1,p2,p3],cnames,loc='upper left',prop={'size':8},ncol=1)
-
-# (b) by sector
-data=[np.zeros(3) for s in sectors]
-inds=range(len(countries))
-
-for i in range(len(sectors)):
-    s=sectors[i]
-    for j in inds:
-        c=countries[j]
-        tmp=avg_s.tb[np.logical_and(avg_s.sector==s,avg_s.region==c)]
-        if(len(tmp)>0):
-            data[i][j]=tmp.values[0]
-
-bottom_pos=np.zeros(3)
-bottom_neg=np.zeros(3)
-p1=axes[1].bar(inds,data[0],color=colors[0],hatch=hatches[0],align='center',width=0.5,alpha=0.99,edgecolor='black',)
-bottom_pos=bottom_pos+vmax(data[0])
-bottom_neg=bottom_neg+vmin(data[0])
-
-bottom=which_bottom(bottom_pos,bottom_neg,data[1])
-p2=axes[1].bar(inds,data[1],bottom=bottom,
-               color=colors[1],hatch=4*hatches[1],linewidth=1,align='center',width=0.5,alpha=0.99,edgecolor='black',)
-bottom_pos=bottom_pos+vmax(data[1])
-bottom_neg=bottom_neg+vmin(data[1])
-
-bottom=which_bottom(bottom_pos,bottom_neg,data[2])
-p3=axes[1].bar(inds,data[2],bottom=bottom,
-               color=colors[2],hatch=4*hatches[2],linewidth=1,align='center',width=0.5,alpha=0.99,edgecolor='black',)
-bottom_pos=bottom_pos+vmax(data[2])
-bottom_neg=bottom_neg+vmin(data[2])
-
-bottom=which_bottom(bottom_pos,bottom_neg,data[3])
-p4=axes[1].bar(inds,data[3],bottom=bottom,
-               color=colors[3],hatch=4*hatches[3],linewidth=1,align='center',width=0.5,alpha=0.99,edgecolor='black',)
-bottom_pos=bottom_pos+vmax(data[3])
-bottom_neg=bottom_neg+vmin(data[3])
-
-bottom=which_bottom(bottom_pos,bottom_neg,data[4])
-p5=axes[1].bar(inds,data[4],bottom=bottom,
-               color=colors[4],hatch=4*hatches[4],linewidth=1,align='center',width=0.5,alpha=0.99,edgecolor='black',)
-bottom_pos=bottom_pos+vmax(data[4])
-bottom_neg=bottom_neg+vmin(data[4])
-
-
-axes[1].plot(range(-1,4),np.zeros(len(range(-1,4))),color='black',linestyle='-')
-axes[1].set_title('(b) By sector',y=1.04,size=10)
-axes[1].legend([p1,p2,p3,p4,p5],snames,loc='upper left',prop={'size':8},ncol=2)
-
-fig.subplots_adjust(hspace=0.05,wspace=0.05)
-fig.tight_layout()
-plt.savefig('output/trade_balances.pdf')
-plt.clf()
-
-
-
-
+    if fcnt in [1,4]:
+        ax.legend(frameon=True, loc='upper left',fontsize=10, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+        
+    fig.tight_layout()    
+    plt.savefig('output/fig_data_sectoral_trade_by_region_%s.pdf'%c)
+    
+    plt.clf()
+    fcnt +=1
 
 plt.close('all')
+
+#-------------------------------------------------------------------
+# stacked bar plots of trade composition across uses, by sector
+
+cols=['ex_M','im_M','nx_M','ex_F','im_F','nx_F',
+      'ex2_M','im2_M','nx2_M','ex2_F','im2_F','nx2_F']
+
+ylims=[(0,80),(0,80),(-80,10),(0,6),(0,6),(-2,1.5)]
+df2 = df[df.partner!='TOT'].groupby(['sector'])[cols].sum().reset_index()
+width=0.75
+
+uses={'Intermediate':'_M','Final':'_F'}
+
+fcnt=0
+for c in ['ex','im','nx','ex2','im2','nx2']:
+    fig,ax=create_fig()
+
+    data = {}
+    for name,suff in uses.items():
+        data[name] = np.array([df2[c+suff][(df2.sector==s)].values[0] for s in slist[0:-1]])
+
+    bottom_pos=np.zeros(len(slist)-1)
+    bottom_neg=np.zeros(len(slist)-1)
+
+    bcnt=0
+    for name, values in data.items():
+        bottom=which_bottom(bottom_pos,bottom_neg,values)
+        ax.bar(snames[:-1], values, width, label=name, bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=1)
+        bottom_pos=bottom_pos+vmax(values)
+        bottom_neg=bottom_neg+vmin(values)
+        bcnt += 1
+
+    if(bottom_neg.min()<1e-6):
+        ax.axhline(0.0,color='black',ls='-',lw=1)
+               
+    ax.set_ylim(ylims[fcnt][0],ylims[fcnt][1])
+
+    if fcnt in [1,4]:
+        ax.legend(frameon=True, loc='upper left',fontsize=10, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+        
+    fig.tight_layout()    
+    plt.savefig('output/fig_data_sectoral_trade_by_use_%s.pdf'%c)
+    
+    plt.clf()
+    fcnt +=1
+
+plt.close('all')
+
+
+#---------------------------------------------------------------------
+# Downstream linkages (direct requirement coefficients)
+    
+M = intermediates.groupby(['col_region','col_sector','row_region','row_sector'])['M'].sum().reset_index()
+M = pd.merge(left=M,right=output,how='left',on=['col_region','col_sector'])
+M['DR'] = 100*M.M/M.GO
+
+Mt = M.loc[(M.col_region=='1-USA')].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
+Md = M.loc[(M.col_region=='1-USA') & (M.col_region==M.row_region)].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
+Mf = M.loc[(M.col_region=='1-USA') & (M.col_region!=M.row_region)].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
+Mc = M.loc[(M.col_region=='1-USA') & (M.row_region=='2-CHN')].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
+Mr = M.loc[(M.col_region=='1-USA') & (M.row_region=='3-ROW')].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
+
+M = [Mt,Md,Mf,Mc,Mr]
+for i in range(5):
+
+    df = M[i]
+    fig,ax=create_fig()
+    
+    data = {}
+    for s_src, sn in sectors.items():
+        if(sn!='Svcs' and sn!='Const'):
+            data[sn] = np.array( [df.DR[(df.col_sector==s_dest) & (df.row_sector==s_src)].values[0] for s_dest in slist] )
+        
+    bottom_pos=np.zeros(len(slist))
+    bottom_neg=np.zeros(len(slist))
+    
+    bcnt=0
+    for name, values in data.items():
+        bottom=which_bottom(bottom_pos,bottom_neg,values)
+        ax.bar(snames, values, width, label=name, bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=1)
+        bottom_pos=bottom_pos+vmax(values)
+        bottom_neg=bottom_neg+vmin(values)
+        bcnt += 1
+
+    if(bottom_neg.min()<1e-6):
+        ax.axhline(0.0,color='black',ls='-',lw=1)
+               
+    ax.set_ylim(0,40)
+
+    if(i==0):
+        ax.legend(frameon=True, loc='upper right',fontsize=10, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+        
+    fig.tight_layout()
+    plt.savefig('output/fig_data_linkages_downstream_%d.pdf'%i)
+    
+    plt.clf()
+    fcnt +=1
+
+
+# -------------------------------------------------------------------------------------------------------
+# Upstream linkages
+
+M = intermediates.groupby(['col_region','col_sector','row_region','row_sector'])['M'].sum().reset_index()
+M = pd.merge(left=M,right=output.rename(columns={'col_region':'row_region','col_sector':'row_sector'}),
+             how='left',on=['row_region','row_sector'])
+M['UR'] = 100*M.M/M.GO
+
+Mt = M.loc[(M.col_region=='1-USA')].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
+Md = M.loc[(M.col_region=='1-USA') & (M.col_region==M.row_region)].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
+Mf = M.loc[(M.col_region=='1-USA') & (M.col_region!=M.row_region)].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
+Mc = M.loc[(M.col_region=='1-USA') & (M.row_region=='2-CHN')].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
+Mr = M.loc[(M.col_region=='1-USA') & (M.row_region=='3-ROW')].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
+
+M = [Mt,Md,Mf,Mc,Mr]
+for i in range(5):
+
+    df = M[i]
+    fig,ax=create_fig()
+    
+    data = {}
+    for s_dest, sn in sectors.items():
+        #if(sn!='Services' and sn!='Construction'):
+        data[sn] = np.array( [df.UR[(df.col_sector==s_dest) & (df.row_sector==s_src)].values[0] for s_src in slist[0:-2]] )
+        
+    bottom_pos=np.zeros(len(slist[0:-2]))
+    bottom_neg=np.zeros(len(slist[0:-2]))
+    
+    bcnt=0
+    for name, values in data.items():
+        bottom=which_bottom(bottom_pos,bottom_neg,values)
+        ax.bar(snames[0:-2], values, width, label=name, bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=1)
+        bottom_pos=bottom_pos+vmax(values)
+        bottom_neg=bottom_neg+vmin(values)
+        bcnt += 1
+
+    if(bottom_neg.min()<1e-6):
+        ax.axhline(0.0,color='black',ls='-',lw=1)
+               
+    ax.set_ylim(0,80)
+
+    if(i==0):
+        ax.legend(frameon=True, loc='upper right',fontsize=10, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+        
+    fig.tight_layout()
+    plt.savefig('output/fig_data_linkages_upstream_%d.pdf'%i)
+    
+    plt.clf()
+    fcnt +=1
+
+
+

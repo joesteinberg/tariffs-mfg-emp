@@ -203,6 +203,12 @@ void copy_vars(eqm * e1, const eqm * e0)
   memcpy((double *)(e1->lp_t),
 	 (const double *)(e0->lp_t),
 	 sizeof(double)*(NT+1)*NC*NS);
+  memcpy((double *)(e1->rks_t),
+	 (const double *)(e0->rks_t),
+	 sizeof(double)*(NT+1)*NC*NS);
+  memcpy((double *)(e1->pm2s_t),
+	 (const double *)(e0->pm2s_t),
+	 sizeof(double)*(NT+1)*NC*NS);
 
   memcpy((double *)(e1->exs_t),
 	 (const double *)(e0->exs_t),
@@ -617,10 +623,10 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
   if(file)
     {
       uint s,j,t;
-      fprintf(file,"period,rgdp,ngdp,ii,ll,c,w,ae,te");
+      fprintf(file,"period,rgdp,ngdp,ii,ll,c,w,ae,te,rk,pi");
       for(s=0;s<NS;s++)
 	{
-	  fprintf(file,",y%d,va%d,lp%d,i%d,c%d,k%d,l%d,py%d,ae%d,te%d",s,s,s,s,s,s,s,s,s,s);
+	  fprintf(file,",y%d,va%d,lp%d,i%d,c%d,k%d,l%d,py%d,pf%d,pm%d,rks%d,pm2s%d,ae%d,te%d",s,s,s,s,s,s,s,s,s,s,s,s,s,s);
 	}
       for(j=0; j<NC; j++)
 	{
@@ -648,7 +654,9 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 	  fprintf(file,"%0.16f,",e->cc_t[t][i]);
 	  fprintf(file,"%0.16f,",e->w_t[t][i]);
 	  fprintf(file,"%0.16f,",e->ae_t[t][i]);
-	  fprintf(file,"%0.16f",e->te_t[t][i]);
+	  fprintf(file,"%0.16f,",e->te_t[t][i]);
+	  fprintf(file,"%0.16f,",e->rk_t[t][i]);
+	  fprintf(file,"%0.16f",e->pi_t[t][i]);
 	  for(s=0; s<NS; s++)
 	    {
 	      fprintf(file,",%0.16f,",e->y_t[t][i][s]);
@@ -664,6 +672,21 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 	      fprintf(file,"%0.16f,",e->k_t[t][i][s]);
 	      fprintf(file,"%0.16f,",e->l_t[t][i][s]);
 	      fprintf(file,"%0.16f,",e->py_t[t][i][s]);
+
+	      if(s!=CNS)
+		{
+		  fprintf(file,"%0.16f,",e->p_t[t][i][s]);
+		  fprintf(file,"%0.16f,",e->pm_t[t][i][s]);
+		}
+	      else
+		{
+		  fprintf(file,"%0.16f,",e->py_t[t][i][s]);
+		  fprintf(file,"%0.16f,",e->py_t[t][i][s]);
+		}
+
+	      fprintf(file,"%0.16f,",e->rks_t[t][i][s]);
+	      fprintf(file,"%0.16f,",e->pm2s_t[t][i][s]);
+	      
 	      fprintf(file,"%0.16f,",e->aes_t[t][i][s]);
 	      fprintf(file,"%0.16f",e->tes_t[t][i][s]);
 	    }
@@ -950,6 +973,21 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
       else
 	{
 	  e->rk_t[t][i] = e->pi_t[t-1][i]*e->cpi_t[t][0]/e->pb_t[t-1] - (1.0-p->delta)*e->pi_t[t][i];
+	}
+
+      for(int s=0; s<NS; s++)
+	{
+	  e->rks_t[t][i][s] = e->pi_t[t][i]/e->py_t[t][i][s];
+	  
+	  e->pm2s_t[t][i][s] = (p->md0[i][s][0]*e->pm_t[t][i][0] +
+			      p->md0[i][s][1]*e->pm_t[t][i][1] +
+			      p->md0[i][s][2]*e->pm_t[t][i][2] +
+			      p->md0[i][s][3]*e->pm_t[t][i][3])/e->py_t[t][i][s];
+
+	  if(scenario==1 && e->pm2s_t[t][i][s]/eee0[0].pm2s_t[t][i][s]>2.0)
+	    {
+	      double test=1;
+	    }
 	}
     }
 

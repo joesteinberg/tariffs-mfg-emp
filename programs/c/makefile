@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -pedantic -std=c99 -fopenmp -fcommon -g -O2
-LDFLAGS = -lpthread -lm -ldl -lcblas -llapacke -lgsl -g -O2
+CFLAGS = -Wall -pedantic -std=c99 -fopenmp -fcommon -g
+LDFLAGS = -lpthread -lm -ldl -lcblas -llapacke -lgsl -g
 
 EXDIR = bin
 ODIR = src/obj
@@ -12,7 +12,7 @@ $(ODIR)/%.o: src/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 model: $(OBJ)
-	$(CC) -o $(EXDIR)/$@.exe $^ $(CFLAGS) $(LDFLAGS)
+	$(CC) -o $(EXDIR)/$@.bin $^ $(CFLAGS) $(LDFLAGS)
 
 .PHONY: clean
 
