@@ -39,10 +39,6 @@
 
 #define NT 100 // time periods until convergence
 
-
-
-#define TSHOCK 0
-
 #define TINY 1.0e-12
 #define TINYSQ 1.0e-6
 
@@ -76,6 +72,7 @@ uint par;
 uint ghh_prefs;
 uint eval_calfn_once;
 double tariff;
+int TSHOCK;
 
 static inline void set_all_v(double * v, uint n, double x)
 {

@@ -352,7 +352,7 @@ scheme2['log_e'] = np.log(scheme2.elast_CP)
 scheme3 = pd.merge(left=scheme2,right=lc.rename(columns={'ind':'row_sector'})[['row_sector','lshare']],how='left',on='row_sector')
 
 # figure
-fig, ax = plt.subplots(figsize=(3.25,3.85),tight_layout = {'pad': 0})
+fig, ax = plt.subplots(figsize=(3.25,3.4),tight_layout = {'pad': 0})
 ax.tick_params(axis='x', labelsize=10)
 ax.tick_params(axis='y', labelsize=10)
 ax.yaxis.label.set_size(12)
@@ -700,7 +700,7 @@ write_iomat_latex(iomat2,rowsums,colsums,'output/iomat')
 print('Figures summarizing trade flows')
 
 def create_fig():
-    fig, ax = plt.subplots(figsize=(3.25*0.6/0.5,3.85),tight_layout = {'pad': 0})
+    fig, ax = plt.subplots(figsize=(3.25,3.4),tight_layout = {'pad': 0})
     ax.tick_params(axis='both', labelsize=10)
     ax.yaxis.label.set_size(10)
     sns.despine()
@@ -770,6 +770,8 @@ df['trd_M']=df.ex_M+df.im_M
 df['nx'] = df.ex-df.im
 df['nx_M'] = df.ex_M-df.im_M
 df['nx_F'] = df.ex_F-df.im_F
+df['nx_C'] = df.ex_C-df.im_C
+df['nx_I'] = df.ex_I-df.im_I
 df['trd2'] = df.trd
 df['im2'] = df.im
 df['ex2'] = df.ex
@@ -780,17 +782,23 @@ df['nx2_M'] = df.nx_M
 df['im2_F'] = df.im_F
 df['ex2_F'] = df.ex_F
 df['nx2_F'] = df.nx_F
+df['im2_C'] = df.im_C
+df['ex2_C'] = df.ex_C
+df['nx2_C'] = df.nx_C
+df['im2_I'] = df.im_I
+df['ex2_I'] = df.ex_I
+df['nx2_I'] = df.nx_I
 
 
 # normalize by sectoral value added and GDP
 for col in df.columns:
-    if col in ['ex_M','ex_F','ex',
-               'im_M','im_F','im',
-               'nx_M','nx_F','nx']:
+    if col in ['ex_M','ex_F','ex_C','ex_I','ex',
+               'im_M','im_F','im_C','im_I','im',
+               'nx_M','nx_F','nx_C','nx_I','nx']:
         df[col]=100*df[col]/df.GO
-    elif col in ['ex2_M','ex2_F','ex2',
-                 'im2_M','im2_F','im2',
-                 'nx2_M','nx2_F','nx2']:
+    elif col in ['ex2_M','ex2_F','ex2_C','ex2_I','ex2',
+                 'im2_M','im2_F','im2_C','im2_I','im2',
+                 'nx2_M','nx2_F','nx2_C','nx2_I','nx2']:
         df[col]=100*df[col]/df.GDP
 
 sectors = {'1-UPSTREAM-HI':'Oil',
@@ -839,9 +847,9 @@ for c in cols:
         ax.axhline(0.0,color='black',ls='-',lw=1)
                
     ax.set_ylim(ylims[fcnt][0],ylims[fcnt][1])
-
-    if fcnt in [1,4]:
-        ax.legend(frameon=True, loc='upper left',fontsize=10, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+    
+    #    if fcnt in [1,4]:
+    ax.legend(frameon=True, loc='best',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
         
     fig.tight_layout()    
     plt.savefig('output/fig_data_sectoral_trade_by_region_%s.pdf'%c)
@@ -854,14 +862,15 @@ plt.close('all')
 #-------------------------------------------------------------------
 # stacked bar plots of trade composition across uses, by sector
 
-cols=['ex_M','im_M','nx_M','ex_F','im_F','nx_F',
-      'ex2_M','im2_M','nx2_M','ex2_F','im2_F','nx2_F']
+cols=['ex_M','im_M','nx_M','ex_F','im_F','nx_F','ex_C','im_C','nx_C','ex_I','im_I','nx_I',
+      'ex2_M','im2_M','nx2_M','ex2_F','im2_F','nx2_F','ex2_C','im2_C','nx2_C','ex2_I','im2_I','nx2_I']
 
 ylims=[(0,80),(0,80),(-80,10),(0,6),(0,6),(-2,1.5)]
 df2 = df[df.partner!='TOT'].groupby(['sector'])[cols].sum().reset_index()
 width=0.75
 
-uses={'Intermediate':'_M','Final':'_F'}
+#uses={'Intermediate':'_M','Final':'_F'}
+uses={'Intermediate':'_M','Investment':'_I','Consumption':'_C'}
 
 fcnt=0
 for c in ['ex','im','nx','ex2','im2','nx2']:
@@ -887,8 +896,8 @@ for c in ['ex','im','nx','ex2','im2','nx2']:
                
     ax.set_ylim(ylims[fcnt][0],ylims[fcnt][1])
 
-    if fcnt in [1,4]:
-        ax.legend(frameon=True, loc='upper left',fontsize=10, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+    #if fcnt in [1,4]:
+    ax.legend(frameon=True, loc='best',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
         
     fig.tight_layout()    
     plt.savefig('output/fig_data_sectoral_trade_by_use_%s.pdf'%c)
@@ -940,7 +949,7 @@ for i in range(5):
     ax.set_ylim(0,40)
 
     if(i==0):
-        ax.legend(frameon=True, loc='upper right',fontsize=10, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+        ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
         
     fig.tight_layout()
     plt.savefig('output/fig_data_linkages_downstream_%d.pdf'%i)
@@ -991,7 +1000,7 @@ for i in range(5):
     ax.set_ylim(0,80)
 
     if(i==0):
-        ax.legend(frameon=True, loc='upper right',fontsize=10, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+        ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
         
     fig.tight_layout()
     plt.savefig('output/fig_data_linkages_upstream_%d.pdf'%i)

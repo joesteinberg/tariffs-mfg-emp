@@ -30,6 +30,7 @@ uint parse_args(int argc, char **argv)
       case 's':
 	s = atoi(optarg);
 	fprintf(logfile,"-Targeted sector: ");
+	// final + intermediate
 	if(s==0)
 	  {
 	    target_sector_flag=0;
@@ -65,6 +66,79 @@ uint parse_args(int argc, char **argv)
 	    target_sector_flag=6;
 	    fprintf(logfile,"All goods\n");
 	  }
+	// intermediate only
+       	else if(s==10)
+	  {
+	    target_sector_flag=10;
+	    fprintf(logfile,"Upstream/hi only (M only)\n");
+	  }
+	else if(s==11)
+	  {
+	    target_sector_flag=11;
+	    fprintf(logfile,"Upstream/lo only (M only)\n");
+	  }
+	else if(s==12)
+	  {
+	    target_sector_flag=12;
+	    fprintf(logfile,"Upstream/all (M only)\n");
+	  }
+	else if(s==13)
+	  {
+	    target_sector_flag=13;
+	    fprintf(logfile,"Downstream/hi only (M only)\n");
+	  }
+	else if(s==14)
+	  {
+	    target_sector_flag=14;
+	    fprintf(logfile,"Downstream/lo only (M only)\n");
+	  }
+	else if(s==15)
+	  {
+	    target_sector_flag=15;
+	    fprintf(logfile,"Downstream/all (M only)\n");
+	  }
+	else if(s==16)
+	  {
+	    target_sector_flag=16;
+	    fprintf(logfile,"All goods (M only)\n");
+	  }
+	// final only
+       	else if(s==20)
+	  {
+	    target_sector_flag=20;
+	    fprintf(logfile,"Upstream/hi only (F only)\n");
+	  }
+	else if(s==21)
+	  {
+	    target_sector_flag=21;
+	    fprintf(logfile,"Upstream/lo only (F only)\n");
+	  }
+	else if(s==22)
+	  {
+	    target_sector_flag=22;
+	    fprintf(logfile,"Upstream/all (F only)\n");
+	  }
+	else if(s==23)
+	  {
+	    target_sector_flag=23;
+	    fprintf(logfile,"Downstream/hi only (F only)\n");
+	  }
+	else if(s==24)
+	  {
+	    target_sector_flag=24;
+	    fprintf(logfile,"Downstream/lo only (F only)\n");
+	  }
+	else if(s==25)
+	  {
+	    target_sector_flag=25;
+	    fprintf(logfile,"Downstream/all (F only)\n");
+	  }
+	else if(s==26)
+	  {
+	    target_sector_flag=26;
+	    fprintf(logfile,"All goods (F only)\n");
+	  }
+
 	else
 	  {
 	    fprintf(logfile,"Invalid command-line option %d!\n",s);
@@ -222,7 +296,7 @@ int quant_exercise()
   set_neqm();
 
   fprintf(logfile,"\nSolving for free-trade benchmark...\n");
-  if(solve_eqm())
+  if(solve_eqm(0))
     {
       fprintf(logfile, "\nProgram failed!\n");
       return 1;
@@ -295,6 +369,10 @@ int quant_exercise()
   // Tariffs
   
   scenario = 1;
+  int duration_flag_=duration_flag;
+  if(duration_flag==1)
+    duration_flag=0;
+    
   set_neqm();
   for(it=0; it<NTH; it++)
     {
@@ -302,12 +380,30 @@ int quant_exercise()
     }
 
   fprintf(logfile,"\nSolving for equilibrium with tariffs...\n");
-  if(solve_eqm())
+  if(solve_eqm(0))
     {
       fprintf(logfile, "\nProgram failed!\n");
       return 1;
     }
 
+  if(duration_flag_==1)
+    {
+      duration_flag=1;
+      TSHOCK=5;
+      set_neqm(1);
+      for(it=0; it<NTH; it++)
+	{
+	  set_tariffs(&(ppp1[it]),scenario);
+	}
+      
+      fprintf(logfile,"\nSolving for equilibrium with tariffs revoked after 4 periods...\n");
+
+      if(solve_eqm(1))
+	{
+	  fprintf(logfile, "\nProgram failed!\n");
+	  return 1;
+	}
+    }
 
   calc_welfare(&(eee1[0]), &(ppp1[0]));
 
@@ -352,6 +448,7 @@ int main(int argc, char * argv[])
   read_seed=0;
   write_seed=1;
   logfile = stdout;
+  TSHOCK=0;
 
   fprintf(logfile, "\n----------------------------------------------------------------------\n");
   fprintf(logfile,  "\nTariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions");

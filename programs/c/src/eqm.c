@@ -1476,7 +1476,7 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
   return 0;
 }
 
-uint solve_eqm()
+uint solve_eqm(int start_flag)
 {
   char * sname;
 
@@ -1513,8 +1513,12 @@ uint solve_eqm()
       free_solver_mem();
       solver_n = neqm;
       alloc_solver_mem();
-
-      eqm * e = &(eee0[0]);
+      
+      eqm * e;
+      if(start_flag==0)
+	e = &(eee0[0]);
+      else
+	e = &(eee1[1]);
 
       if(read_seed==1)
 	{

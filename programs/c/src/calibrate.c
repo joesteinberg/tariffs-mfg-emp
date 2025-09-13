@@ -215,44 +215,47 @@ void set_tariffs(params * p, uint scenario)
 		x=0.0;
 
 	      // turn off tariffs for nontargeted sectors		
-	      if(target_sector_flag==0)
+	      if(target_sector_flag %10 ==0)
 		x = (s==UPH ? x : 0.0);
-	      else if(target_sector_flag==1)
+	      else if(target_sector_flag %10 ==1)
 		x = (s==UPL ? x : 0.0);
-	      else if(target_sector_flag==2)
+	      else if(target_sector_flag %10 ==2)
 		x = (s==UPL||s==UPH ? x : 0.0);
-	      else if(target_sector_flag==3)
+	      else if(target_sector_flag %10 ==3)
 		x = (s==DNH ? x : 0.0);
-	      else if(target_sector_flag==4)
+	      else if(target_sector_flag %10 ==4)
 		x = (s==DNL ? x : 0.0);
-	      else if(target_sector_flag==5)
+	      else if(target_sector_flag %10 ==5)
 		x = (s==DNL||s==DNH ? x : 0.0);
-	      else if(target_sector_flag==6)
+	      else if(target_sector_flag %10 ==6)
 		x = x;
+
+	      int m_flag = target_sector_flag<=16;
+	      int f_flag = target_sector_flag<10 || target_sector_flag>=20;
 	      
 	      // tariffs on China
 	      if(target_country_flag==0 || target_country_flag==2) 
 		{
-		  p->tau_m_ts[t][USA][s][CHN] = x;
-		  p->tau_f_ts[t][USA][s][CHN] = x;
+		  p->tau_m_ts[t][USA][s][CHN] = m_flag*x;
+		  p->tau_f_ts[t][USA][s][CHN] = f_flag*x;
 
 		  if(retaliation_flag)
 		    {
-		      p->tau_m_ts[t][CHN][s][USA] = x;
-		      p->tau_f_ts[t][CHN][s][USA] = x;
+		      p->tau_m_ts[t][CHN][s][USA] = m_flag*x;
+		      p->tau_f_ts[t][CHN][s][USA] = f_flag*x;
 		    }
 		}
 
 	      // tariffs on ROW
 	      if(target_country_flag==1 || target_country_flag==2)
 		{
-		  p->tau_m_ts[t][USA][s][ROW] = x;
-		  p->tau_f_ts[t][USA][s][ROW] = x;
+		  p->tau_m_ts[t][USA][s][ROW] = m_flag*x;
+		  p->tau_f_ts[t][USA][s][ROW] = f_flag*x;
 
 		  if(retaliation_flag)
 		    {
-		      p->tau_m_ts[t][ROW][s][USA] = x;
-		      p->tau_f_ts[t][ROW][s][USA] = x;
+		      p->tau_m_ts[t][ROW][s][USA] = m_flag*x;
+		      p->tau_f_ts[t][ROW][s][USA] = f_flag*x;
 		    }
 		}
 	    }

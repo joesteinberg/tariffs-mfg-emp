@@ -116,7 +116,7 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp); // sets all the vari
 uint eval_bgp_conds(const double * myx, double * myf, uint tn); // evaluates the BGP equations
 uint solve_bgp(double bb[NC]); // solves for the balanced growth path
 uint eval_eqm_conds(const double * myx, double * myf, uint tn); // evaluates the deterministic equilibrium conditions
-uint solve_eqm(); // solves for the deterministic equilibrium
+uint solve_eqm(int start_flag); // solves for the deterministic equilibrium
 void calc_welfare(eqm * e, const params * p);
 
 // inlined equilibrium equations
