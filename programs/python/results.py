@@ -98,7 +98,7 @@ def diff_pct_ii(df,variable):
 def pp_chg(df,variable):
     return (100*(df[1][variable]-df[0][variable])).values
 
-def create_fig(size=(3.25,3.4)):
+def create_fig(size=(3.25,3.25)):
     fig, ax = plt.subplots(figsize=size,tight_layout = {'pad': 0})
     ax.tick_params(axis='both', labelsize=10)
     ax.yaxis.label.set_size(10)
@@ -111,7 +111,7 @@ def create_fig(size=(3.25,3.4)):
 
 mperiods = df_all[0][0].period.values
 
-def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.4)):
+def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.25)):
 
     maxT=51
     W=2
@@ -165,7 +165,7 @@ for s in range(5):
     data['Total'] = pct_chg(df_all[s],'lg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_labor_goods_s%d'%s
-    plot_dyn(data,fname,ylim=(-2,5.5),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.4))        
+    plot_dyn(data,fname,ylim=(-2,5.5),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))        
     plt.close('all')
 
 # go in each scenario
@@ -176,7 +176,7 @@ for s in range(5):
     #data['Total'] = pct_chg(df_all[s],'lg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_y_goods_s%d'%s
-    plot_dyn(data,fname,lr_bars=True,ylabel='change in output (percent)',size=(3.25,3.4))
+    plot_dyn(data,fname,lr_bars=True,ylabel='change in output (percent)',size=(3.25,3.25))
     plt.close('all')
 
 # inv in each scenario
@@ -187,7 +187,7 @@ for s in range(5):
     #data['Total'] = pct_chg(df_all[s],'ii')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_inv_goods_s%d'%s
-    plot_dyn(data,fname,lr_bars=True,ylabel='change in investment (percent)',size=(3.25,3.4))
+    plot_dyn(data,fname,lr_bars=True,ylabel='change in investment (percent)',size=(3.25,3.25))
     plt.close('all')
 
 # capital costs in each scenario
@@ -198,7 +198,7 @@ for s in range(5):
     #data['Total'] = pct_chg(df_all[s],'lg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_rks_goods_s%d'%s
-    plot_dyn(data,fname,lr_bars=True,ylabel='change in relative capital cost (percent)',size=(3.25,3.4),ylim=(-5,10))
+    plot_dyn(data,fname,lr_bars=True,ylabel='change in relative capital cost (percent)',size=(3.25,3.25),ylim=(-5,10))
     plt.close('all')
 
 # materials costs in each scenario
@@ -209,7 +209,7 @@ for s in range(5):
     #data['Total'] = pct_chg(df_all[s],'lg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_pm2_goods_s%d'%s
-    plot_dyn(data,fname,lr_bars=True,ylabel='change in relative material cost (percent)',size=(3.25,3.4),ylim=(-5,10))
+    plot_dyn(data,fname,lr_bars=True,ylabel='change in relative material cost (percent)',size=(3.25,3.25),ylim=(-5,10))
     plt.close('all')
     
 # GDP across scenarios
@@ -221,6 +221,15 @@ fname = 'fig_dyn_macro'
 data = pd.DataFrame(data)
 plot_dyn(data,fname,ylabel = 'percent change',size=(3.25*0.5/0.4,3.4),lr_bars=True)
 
+scenarios = ['Oil','Steel','Toys','Cars','All']
+data={}
+for s in [0,1,2,3,4]:
+    data[scenarios[s]] = pct_chg(df_all[s],'c')
+fname = 'fig_dyn_consumption'
+data = pd.DataFrame(data)
+plot_dyn(data,fname,ylabel = 'percent change',size=(3.25*0.5/0.4,3.4),lr_bars=True)
+
+
 ## resized main graph
 data = {}
 for s2 in range(4):
@@ -228,7 +237,7 @@ for s2 in range(4):
 data['Total'] = pct_chg(df_all[4],'lg')
 data = pd.DataFrame(data)
 fname = 'fig_dyn_labor_goods_atb_resize'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.4))
+plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.25))
 
 # ATB tariffs w/ retaliation
 data = {}
@@ -237,7 +246,7 @@ for s2 in range(4):
 data['Total'] = pct_chg(df_all_ret,'lg')
 data = pd.DataFrame(data)
 fname = 'fig_dyn_labor_goods_atb_retaliation'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.4))
+plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.25))
 
 # ATB tariffs w/ no adj costs
 data = {}
@@ -246,7 +255,7 @@ for s2 in range(4):
 data['Total'] = pct_chg(df_all_noadj,'lg')
 data = pd.DataFrame(data)
 fname = 'fig_dyn_labor_goods_atb_noadj'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.4))
+plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.25))
 
 # ATB tariffs w/ reversal
 data = {}
@@ -255,7 +264,7 @@ for s2 in range(4):
 data['Total'] = pct_chg(df_all_trans,'lg')
 data = pd.DataFrame(data)
 fname = 'fig_dyn_labor_goods_atb_temp'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.4))
+plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.25))
 
 
 plt.close('all')
@@ -331,7 +340,7 @@ ax.set_xticks(x, data_df.scenario)
 ax.axhline(0.0,color='black',ls='-',lw=1)
 ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
 ax.set_ylim(-2.5,5.5)
-ax.set_xlabel('Targeted sector')
+ax.set_xlabel('targeted sector')
 ax.set_ylabel('change (percent total goods emp)')
 fig.tight_layout()    
 plt.savefig('output/fig_lr_emp_across_scenarios_all_vs_sectors.pdf')

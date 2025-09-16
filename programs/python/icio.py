@@ -700,7 +700,7 @@ write_iomat_latex(iomat2,rowsums,colsums,'output/iomat')
 print('Figures summarizing trade flows')
 
 def create_fig():
-    fig, ax = plt.subplots(figsize=(3.25,3.4),tight_layout = {'pad': 0})
+    fig, ax = plt.subplots(figsize=(3.25,3.25),tight_layout = {'pad': 0})
     ax.tick_params(axis='both', labelsize=10)
     ax.yaxis.label.set_size(10)
     sns.despine()
