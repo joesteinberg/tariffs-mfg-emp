@@ -351,13 +351,20 @@ with open('output/sectors.tex','w') as file:
 scheme2['log_e'] = np.log(scheme2.elast_CP)
 scheme3 = pd.merge(left=scheme2,right=lc.rename(columns={'ind':'row_sector'})[['row_sector','lshare']],how='left',on='row_sector')
 
+final_labels2 = final_labels.copy()
+for i in range(len(final_labels)):
+    if final_labels[i]==2:
+        final_labels2[i]=3
+    elif final_labels[i]==3:
+        final_labels2[i]=2
+
 # figure
 fig, ax = plt.subplots(figsize=(3.25,3.4),tight_layout = {'pad': 0})
 ax.tick_params(axis='x', labelsize=10)
 ax.tick_params(axis='y', labelsize=10)
 ax.yaxis.label.set_size(12)
 sns.despine()
-ax.scatter(scheme3.U,scheme3.log_e, c=[colors[k] for k in final_labels])
+ax.scatter(scheme3.U,scheme3.log_e, c=[colors[k] for k in final_labels2])
 
 tmpv = 0.5*scheme3[scheme3.row_sector_num<2]['U'].min() +  0.5*scheme3[scheme3.row_sector_num>=2]['U'].max()
 ax.axvline(tmpv,color='black',lw=1)

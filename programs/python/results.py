@@ -51,15 +51,18 @@ def load_results(t,s,c,r,d,a):
                         
     for m in models_usa:
         m['nx']=m['nx1']+m['nx2']
+        m['rer'] = m['rer1']*models_usa[0]['ex1'].values[0] + m['rer2']*models_usa[0]['ex2'].values[0]
         m['lg']=m['l0']+m['l1']+m['l2']+m['l3']
         for s in [0,1,2,3,4]:
             m['nxs'+str(s)]=m['nxs'+str(s)+'-1']+m['nxs'+str(s)+'-2']
             m['exs'+str(s)]=m['exs'+str(s)+'-1']+m['exs'+str(s)+'-2']
             m['ims'+str(s)]=m['ims'+str(s)+'-1']+m['ims'+str(s)+'-2']
-            
-        m['nxsg'] = m['nxs0'] + m['nxs1'] + m['nxs2'] + m['nxs3']
+
+        m['img'] = m['ims0'] + m['ims1'] + m['ims2'] + m['ims3']
+        m['exg'] = m['exs0'] + m['exs1'] + m['exs2'] + m['exs3']
+        m['nxg'] = m['nxs0'] + m['nxs1'] + m['nxs2'] + m['nxs3']
         for col in m.columns:
-            if('nx' in col or 'ex' in col or 'im' in col):
+            if('nx' in col ):
                 m[col] = m[col]/m.ngdp                
 
     return models_usa
@@ -111,7 +114,7 @@ def create_fig(size=(3.25,3.25)):
 
 mperiods = df_all[0][0].period.values
 
-def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.25)):
+def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.25),noxlab=False,ncl=1):
 
     maxT=51
     W=2
@@ -131,7 +134,7 @@ def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.2
         cnt=cnt+1
 
     if(leg):
-        ax.legend(frameon=True, loc='best',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+        ax.legend(frameon=True, loc='best',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1,ncol=ncl)
 
     if(lr_bars):
         ax.bar(maxT+W*n/2 + 2*np.arange(n), [data[col].values[-1] for col in data.columns],
@@ -146,7 +149,8 @@ def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.2
     if ylim !=None:
         ax.set_ylim(ylim)
 
-    ax.set_xlabel('period')
+    if(noxlab==False):
+        ax.set_xlabel('period')
 
     if ylabel !=None:
         ax.set_ylabel(ylabel)
@@ -157,7 +161,7 @@ def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.2
     plt.savefig('output/' + fname + '.pdf')
     plt.clf()
 
-# sector-level employment in each scenario
+# industry-level goods employment in each scenario
 for s in range(5):
     data = {}
     for s2 in range(4):
@@ -168,6 +172,17 @@ for s in range(5):
     plot_dyn(data,fname,ylim=(-2,5.5),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))        
     plt.close('all')
 
+# sector-level employment in each scenario
+for s in range(5):
+    data = {}
+    data['Goods'] = pct_chg(df_all[s],'lg')
+    data['Svcs'] = pct_chg(df_all[s],'l4')
+    data['Const'] = pct_chg(df_all[s],'l5')
+    data = pd.DataFrame(data)
+    fname = 'fig_dyn_labor_sectors_s%d'%s
+    plot_dyn(data,fname,leg=(s==2),ylim=(-2,4),lr_bars=True,size=(2.5,1.8),noxlab=True)
+    plt.close('all')
+    
 # go in each scenario
 for s in range(5):
     data = {}
@@ -176,7 +191,7 @@ for s in range(5):
     #data['Total'] = pct_chg(df_all[s],'lg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_y_goods_s%d'%s
-    plot_dyn(data,fname,lr_bars=True,ylabel='change in output (percent)',size=(3.25,3.25))
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8))
     plt.close('all')
 
 # inv in each scenario
@@ -211,6 +226,74 @@ for s in range(5):
     fname = 'fig_dyn_pm2_goods_s%d'%s
     plot_dyn(data,fname,lr_bars=True,ylabel='change in relative material cost (percent)',size=(3.25,3.25),ylim=(-5,10))
     plt.close('all')
+
+# intermediate prices in each scenario
+for s in range(5):
+    data = {}
+    for s2 in range(4):
+        data[slabels[s2]] = pct_chg(df_all[s],'pm%d'%s2)
+    #data['Total'] = pct_chg(df_all[s],'lg')
+    data = pd.DataFrame(data)
+    fname = 'fig_dyn_pm_goods_s%d'%s
+    #plot_dyn(data,fname,ylim=(-2,4),lr_bars=True,size=(2.5,1.8),noxlab=True)
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-5,10),ncl=2)
+    plt.close('all')
+
+# final prices in each scenario
+for s in range(5):
+    data = {}
+    for s2 in range(4):
+        data[slabels[s2]] = pct_chg(df_all[s],'pf%d'%s2)
+    #data['Total'] = pct_chg(df_all[s],'lg')
+    data = pd.DataFrame(data)
+    fname = 'fig_dyn_pf_goods_s%d'%s
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-5,10),ncl=2)
+    plt.close('all')
+
+# imports in each scenario
+for s in range(5):
+    data = {}
+    for s2 in range(4):
+        data[slabels[s2]] = pct_chg(df_all[s],'ims%d'%s2)
+    data['Total'] = pct_chg(df_all[s],'img')
+    data = pd.DataFrame(data)
+    fname = 'fig_dyn_imports_goods_s%d'%s
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-80,20),ncl=2)
+    plt.close('all')
+
+# exports in each scenario
+for s in range(5):
+    data = {}
+    for s2 in range(4):
+        data[slabels[s2]] = pct_chg(df_all[s],'exs%d'%s2)
+    data['Total'] = pct_chg(df_all[s],'exg')
+    data = pd.DataFrame(data)
+    fname = 'fig_dyn_exports_goods_s%d'%s
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-80,20),ncl=2)
+    plt.close('all')
+
+# net exports in each scenario
+for s in range(5):
+    data = {}
+    for s2 in range(4):
+        data[slabels[s2]] = pp_chg(df_all[s],'nxs%d'%s2)
+    data['Total'] = pp_chg(df_all[s],'nxg')
+    data = pd.DataFrame(data)
+    fname = 'fig_dyn_nx_goods_s%d'%s
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-1,2),ncl=2)
+    plt.close('all')
+
+# real exchange rate
+for s in range(5):
+    data = {}
+    data['REER'] = pct_chg(df_all[s],'rer')
+    data = pd.DataFrame(data)
+    fname = 'fig_dyn_rer_s%d'%s
+    plot_dyn(data,fname,leg=False,lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-20,20))
+    plt.close('all')
+
+
+    
     
 # GDP across scenarios
 scenarios = ['Oil','Steel','Toys','Cars','All']
