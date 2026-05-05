@@ -1,0 +1,44 @@
+\renewcommand{\cellalign}{tl}
+\renewcommand{\theadalign}{bc}
+\begin{tabularx}{\linewidth}{Xp{6cm}cccc}
+\toprule
+\thead{Sector} & \thead{Industries} & \thead{Upstreamness} & \thead{Trade\\elasticity} & \thead{Share of\\goods emp.}\\
+\midrule
+\multicolumn{4}{l}{\textbf{(a) Goods industry clusters}}\\
+\midrule
+\makecell{High-elasticity\\upstream (``Oil'')} & Agriculture, Mining (energy), Mining (non-energy), Mining support, Wood products, Paper products, Refined petroleum, Fabricated metals& 3.0& 17.6& 28.4\\
+\makecell{Low-elasticity\\upstream (``Steel'')} & Chemicals, Rubber + plastics, Minerals, Basic metals& 3.0& 2.8& 18.1\\
+\makecell{High-elasticity\\downstream (``Toys'')} & Fishing, Textiles, Electronics, Electrical equipment& 2.2& 11.9& 17.7\\
+\makecell{Low-elasticity\\downstream (``Cars'')} & Food + beverages, Pharmaceuticals, Machinery + equipment, Motor vehicles, Other trans. equip., Other mfg& 1.9& 2.2& 35.7\\
+\midrule
+\end{tabularx}
+\begin{tabularx}{\linewidth}{cXcl}
+\multicolumn{4}{l}{\textbf{(b) Parameter values}}\\
+\midrule
+\thead{Parameter} & \thead{Meaning} & \thead{Value} &\thead{Target}\\
+\midrule
+\multicolumn{4}{l}{\textit{Producer technology}}\\
+$\eta$ & Elasticity of substitution between value added and intermediates & 0.05 & \citet{atalay}\\
+$\xi$ & Elasticity of substitution between intermediates  from different sectors & 0.03 & \citet{atalay}\\
+$\lambda^{s,v}_i$ & Share of value added in gross output & Varies & ICIO data\\
+$\lambda^{s,r}_i$ & Share of intermediates in gross output & Varies & ICIO data\\
+$\delta$ & Depreciation rate & 0.06 & Standard\\
+$K^s_{i,0}$ & Initial sectoral capital stock & Varies & ICIO data\\
+$\phi_K$ & Capital adjustment cost & 0.52 & \citet{gsg-dsd}\\
+$\phi_L$ & Labor adjustment cost & 6.5 & \citet{KR_2009}\\[1em]
+\multicolumn{4}{l}{\textit{Distributor technology}}\\
+$\zeta^s$ & Long-run trade elasticity & Varies & Multiple sources\\
+$\mu^{s,m}_{i,j},\mu^{s,f}_{i,j}$ & Share of expenditures from country $j$ & Varies & ICIO data\\
+$\phi_Z$ & Supply-chain adjustment cost & 2.9 & SR trade elast. = 1\\[1em]
+\multicolumn{4}{l}{\textit{Retailer technology}}\\
+$\rho^c$ & Elasticity of substitution between sectors in consumption & 0.65 & \citet{atalay}\\
+$\rho^x$ & Elasticity of substitution between sectors in investment & 1 & \citet{bems2008aggregate}\\
+$\varepsilon^{s,c}_{i},\varepsilon^{s,x}_{i}$ & Sectoral expenditure shares & Varies & ICIO data\\[1em]
+\multicolumn{4}{l}{\textit{Household preferences}}\\
+$\beta$ & Discount factor & 0.98 & Standard\\
+$\gamma$ & Intertemporal elasticity of substitution & 2.0 & Standard\\
+$\theta$ & Frisch elasticity & 1.0 & Standard\\
+$\psi_i$ & Utility weight on labor supply & Varies & LR labor supply = 1/3\\
+$B_{i,0}$ & Initial bondholdings & Varies & IMF BOP\\
+\bottomrule
+\end{tabularx}
