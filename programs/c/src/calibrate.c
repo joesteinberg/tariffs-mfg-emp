@@ -2,6 +2,7 @@
 #define __CALIBRATE_C__
 
 #include "calibrate.h"
+#include "trump2025_tariffs.h"
 
 uint copy_params(params * dest, const params * src)
 {
@@ -204,6 +205,25 @@ void set_tariffs(params * p, uint scenario)
   
   if(scenario>=1)
     {
+      if(tariff_policy_flag==1)
+	{
+	  for(t=TSHOCK; t<(NT+1); t++)
+	    {
+	      for(s=0; s<NS-2; s++) // don't include services or construction
+		{
+		  double duration_scale = 1.0;
+		  if(duration_flag==1 && t>=4)
+		    duration_scale = 0.0;
+
+		  p->tau_m_ts[t][USA][s][CHN] = duration_scale*trump2025_tau[s][CHN];
+		  p->tau_f_ts[t][USA][s][CHN] = duration_scale*trump2025_tau[s][CHN];
+		  p->tau_m_ts[t][USA][s][ROW] = duration_scale*trump2025_tau[s][ROW];
+		  p->tau_f_ts[t][USA][s][ROW] = duration_scale*trump2025_tau[s][ROW];
+		}
+	    }
+	  return;
+	}
+
       for(t=TSHOCK; t<(NT+1); t++)
 	{
 	  for(s=0; s<NS-2; s++) // don't include services or construction

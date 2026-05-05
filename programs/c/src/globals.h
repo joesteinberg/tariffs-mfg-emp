@@ -61,6 +61,7 @@ uint target_country_flag;
 uint retaliation_flag;
 uint adjustment_flag;
 uint duration_flag;
+uint tariff_policy_flag;
 uint m_adj_cost;
 uint f_adj_cost;
 uint k_adj_cost;

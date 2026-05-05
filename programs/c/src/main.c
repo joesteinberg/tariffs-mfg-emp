@@ -7,18 +7,18 @@
 
 uint parse_args(int argc, char **argv)
 {
-  if(argc != 13)
+  if(argc != 13 && argc != 15)
     {
       fprintf(logfile,"Wrong number of command line arguments = %d!\n",argc);
       return 1;
     }
   
   int opt = 0;
-  int t, s, c, r, d, a;
+  int t, s, c, r, d, a, p;
 
   fprintf(logfile,"Model scenario:\n");
   
-  while((opt = getopt(argc, argv, "t:s:c:r:d:a:")) != -1)
+  while((opt = getopt(argc, argv, "t:s:c:r:d:a:p:")) != -1)
     {
       switch(opt){
 
@@ -258,6 +258,31 @@ uint parse_args(int argc, char **argv)
 	  }
 	break;
 
+      case 'p':
+	p = atoi(optarg);
+	fprintf(logfile,"-Tariff policy: ");
+	if(p==0)
+	  {
+	    tariff_policy_flag=0;
+	    fprintf(logfile,"Scalar command-line tariff\n");
+	  }
+	else if(p==1)
+	  {
+	    tariff_policy_flag=1;
+	    fprintf(logfile,"Trump 2025 sector/source matrix\n");
+	    fprintf(logfile,"  Note: -t, -s, and -c are ignored for tariff assignment under -p 1.\n");
+	    if(retaliation_flag)
+	      {
+		fprintf(logfile,"  Note: retaliation is not implemented for the Trump 2025 matrix scenario.\n");
+	      }
+	  }
+	else
+	  {
+	    fprintf(logfile,"Invalid command-line option %d!\n",p);
+	    return 1;
+	  }
+	break;
+
       default:
 	fprintf(logfile,"Invalid command-line option!\n");
 	return 1;      
@@ -441,6 +466,7 @@ int main(int argc, char * argv[])
   m_adj_cost=0;
   k_adj_cost=0;
   l_adj_cost=0;
+  tariff_policy_flag=0;
   fixl=0;
   ghh_prefs=1;
   eval_eqm_once_flag=0;

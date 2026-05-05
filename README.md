@@ -24,6 +24,8 @@ All data used by this project are publicly available and are included in this re
 | OECD 2023 Inter-Country Input-Output Tables, 2020 ICIO matrix | `data/2020_SML.csv` | Yes | Downloaded from the OECD Inter-Country Input-Output Tables page, https://www.oecd.org/en/data/datasets/inter-country-input-output-tables.html. Accessed May 5, 2026. |
 | U.S. Bureau of Economic Analysis, Components of Value Added by Industry | `data/ComponentsOfVa.xlsx` | Yes | Downloaded from BEA GDP by Industry table TVA113, "Components of Value Added by Industry." The code uses sheet `UVCT2-A`, compensation of employees. The `ICIO Industry Code` column was manually added for merging with the ICIO industry codes. Accessed May 5, 2026. |
 | Industry names and trade elasticities | `data/industry_names_elasts.csv` | Yes | Author-created file mapping ICIO industries to short names and trade elasticities. The `elast_CP` values are from the 99 percent sample estimates in Table 1 of Caliendo and Parro (2015). Accessed May 5, 2026. |
+| Trade War Tracker HS10 import and duty data | `external/how-restrictive-us-trade/` | No | Cloned from https://github.com/tradewartracker/how-restrictive-us-trade. The Trump 2025 tariff script uses Census HS10 import values and calculated duties from this repository. |
+| WITS HS2022-to-GTAP concordance | Downloaded by `programs/python/trump2025_tariffs.py` | No | World Bank WITS concordance file `Concordance_H6_to_GP.zip`, https://wits.worldbank.org/product_concordance.html. |
 
 ### Dataset List
 
@@ -32,6 +34,8 @@ All data used by this project are publicly available and are included in this re
 | `data/2020_SML.csv` | CSV | `programs/python/icio.py` | Raw 2020 OECD ICIO matrix used to construct the three-region, six-sector input-output table. The paper discusses this data construction in Section 3.1, "Sectoral aggregation." |
 | `data/ComponentsOfVa.xlsx` | Excel workbook | `programs/python/icio.py` | BEA compensation-of-employees data used to compute sectoral employment compensation shares for the sector classification summary. The paper references this source in the notes to Table 1. |
 | `data/industry_names_elasts.csv` | CSV | `programs/python/icio.py` | Author-created industry-code crosswalk containing industry names and Caliendo-Parro trade elasticities. These elasticities enter the clustering described in Section 3.1 and summarized in Table 1. |
+| `programs/python/output/trump2025_tariffs.csv` | CSV | `programs/c/src/trump2025_tariffs.h` | Generated sector/source tariff rates for the Trump 2025 scenario. Rates are December 2025 HS10 duty rates minus 2024 baseline duty rates, clipped at zero and weighted by 2024 imports. |
+| `programs/python/output/trump2025_tariff_diagnostics.csv` | CSV | Diagnostics | Generated diagnostics for the Trump 2025 tariff construction, including unmatched import shares and aggregate weighted tariff checks. |
 
 ## Computational Requirements
 
@@ -42,7 +46,7 @@ The code was last run on the following machine:
 - RAM: 251 GiB
 - Storage used by this repository: 177 MB total, including 66 MB in `data/`, 51 MB in `programs/c/output/`, and 1.6 MB in `programs/python/output/`
 
-The full set of model runs is compute-intensive. On this workstation, `icio.py` takes less than 10 minutes, each C model run takes about 1 hour, `results.py` is much faster than the model solves, and `scripts/export_overleaf.sh` takes about 1 second. `programs/c/run_all.sh` runs 28 model exercises, so a complete clean rerun can take more than one day unless runs are parallelized manually or executed on a comparable multi-core workstation.
+The full set of model runs is compute-intensive. On this workstation, `icio.py` takes less than 10 minutes, a single C model run takes about 151 seconds, `results.py` is much faster than the model solves, and `scripts/export_overleaf.sh` takes about 1 second. `programs/c/run_all.sh` runs 29 model exercises, so a complete clean rerun takes about 75 minutes if run serially.
 
 ### Software Requirements
 
@@ -94,6 +98,20 @@ Main outputs:
 | `programs/python/output/fig_data_linkages_downstream_{0,1,2,3,4}.pdf` | Downstream linkage figures. Index `0` uses all U.S. input sources, `1` domestic sources, `2` foreign sources, `3` China, and `4` rest of world. |
 | `programs/python/output/fig_data_linkages_upstream_{0,1,2,3,4}.pdf` | Upstream linkage figures with the same index convention as downstream linkages. |
 
+### `programs/python/trump2025_tariffs.py`
+
+This script builds the Trump 2025 tariff matrix used by the C model. It expects Trade War Tracker data cloned to `external/how-restrictive-us-trade/`, downloads the WITS HS2022-to-GTAP concordance if a local `--gtap-concordance` file is not supplied, and writes sector/source tariff rates for China and rest of world.
+
+The tariff shock is computed at the HS10 level as the December 2025 duty/import rate minus the 2024 duty/import baseline, clipped at zero, and then aggregated with 2024 import weights. HS10 products are truncated to HS6 and mapped to the model's four goods sectors through the WITS GTAP concordance.
+
+Main outputs:
+
+| Output | Description |
+| --- | --- |
+| `programs/python/output/trump2025_tariffs.csv` | Sector/source tariff rates used by the model. |
+| `programs/python/output/trump2025_tariff_diagnostics.csv` | Unmatched import shares and aggregate weighted-tariff checks. |
+| `programs/c/src/trump2025_tariffs.h` | Generated C constants read by `set_tariffs()`. |
+
 ### `programs/c/`
 
 The C code solves the dynamic general-equilibrium model described in Section 2 and the counterfactual tariff exercises described in Section 4.
@@ -106,6 +124,7 @@ Important files:
 | `programs/c/run_all.sh` | Runs exactly the C model exercises needed by `programs/python/results.py`. |
 | `programs/c/src/main.c` | Parses model command-line options and runs the benchmark and tariff equilibrium solves. |
 | `programs/c/src/calibrate.c` | Reads `programs/python/output/iomat.txt`, calibrates model parameters, and writes `programs/c/output/params.txt`. |
+| `programs/c/src/trump2025_tariffs.h` | Generated Trump 2025 sector/source tariff matrix used when the model is run with `-p 1`. |
 | `programs/c/src/eqm.c` | Defines equilibrium variables/equations, writes equilibrium time series, and writes solver seed files. |
 | `programs/c/src/solver.c`, `programs/c/src/gnewton.c` | Nonlinear-equation solver routines. |
 
@@ -116,6 +135,7 @@ Main outputs:
 | `programs/c/output/params.txt` | Internally calibrated scalar, vector, matrix, and 3D parameter values. This file underlies the internally calibrated parameter entries summarized in Table 1. |
 | `programs/c/output/vars0_{usa,chn,row}_a*.csv` | Free-trade benchmark equilibrium time series by country/region and adjustment-cost setting. |
 | `programs/c/output/vars1_{usa,chn,row}_t*_s*_c*_r*_d*_a*.csv` | Counterfactual tariff equilibrium time series by country/region and scenario. These are the inputs to `results.py`. |
+| `programs/c/output/vars1_{usa,chn,row}_trump2025_r*_d*_a*.csv` | Trump 2025 tariff-matrix equilibrium time series. |
 | `programs/c/output/log_*.txt` | Solver logs for the corresponding model runs, including command-line scenario information and convergence output. |
 | `programs/c/output/seed0.bin`, `programs/c/output/seed1.bin` | Binary solver state files written after successful solves. `seed0.bin` is for the free-trade benchmark and `seed1.bin` is for the tariff equilibrium. If `read_seed` is enabled in `main.c`, `eqm.c` can read these files as initial guesses for the Newton solver in later counterfactuals. |
 
@@ -129,6 +149,7 @@ The model binary uses these command-line options:
 | `-r` | Retaliation flag | `0` no retaliation, `1` symmetric retaliation |
 | `-d` | Duration flag | `0` permanent tariff, `1` temporary tariff revoked after four periods |
 | `-a` | Adjustment-cost flag | `0` no adjustment costs, `4` labor + capital + supply-chain adjustment costs |
+| `-p` | Tariff policy flag | Optional; `0` scalar command-line tariff, `1` Trump 2025 sector/source tariff matrix |
 
 Examples:
 
@@ -142,6 +163,10 @@ Examples:
 
 # 25 percent permanent U.S. tariff on final goods in the toys sector only.
 ./bin/model.bin -t 25 -s 23 -c 2 -r 0 -d 0 -a 4
+
+# Trump 2025 sector/source tariff matrix. The scalar tariff, sector, and
+# country flags are ignored for tariff assignment under -p 1.
+./bin/model.bin -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1
 ```
 
 Use `programs/c/run_all.sh` to comprehensively produce the C outputs used by the paper figures.

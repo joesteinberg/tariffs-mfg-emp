@@ -1,0 +1,17 @@
+source,metric,value
+CHN,baseline_imports_total,429425828419.0
+CHN,mapped_imports_total,417986720127.0
+CHN,unmatched_imports_total,11439108292.0
+CHN,unmatched_import_share,0.026638146881185303
+CHN,negative_shock_import_share,0.02475424131365469
+CHN,baseline_weighted_tariff,0.10865954673194843
+CHN,target_weighted_tariff,0.29092657233279196
+CHN,shock_weighted_tariff,0.1857696068673007
+ROW,baseline_imports_total,2821768973961.0
+ROW,mapped_imports_total,2705715732950.0
+ROW,unmatched_imports_total,116053241011.0
+ROW,unmatched_import_share,0.04112783225059444
+ROW,negative_shock_import_share,0.10552168621906301
+ROW,baseline_weighted_tariff,0.010453992314470641
+ROW,target_weighted_tariff,0.09123585579720164
+ROW,shock_weighted_tariff,0.0815497896963849

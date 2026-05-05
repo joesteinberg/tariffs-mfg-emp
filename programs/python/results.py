@@ -48,6 +48,24 @@ def load_results(t,s,c,r,d,a):
     models_usa=[]
     models_usa.append(pd.read_csv('../c/output/vars0_usa_a%d.csv'%a))
     models_usa.append(pd.read_csv('../c/output/vars1_usa_t%d_s%d_c%d_r%d_d%d_a%d.csv'%(t,s,c,r,d,a)))
+
+    process_results(models_usa)
+
+    return models_usa
+
+
+def load_results_trump2025(r,d,a):
+
+    models_usa=[]
+    models_usa.append(pd.read_csv('../c/output/vars0_usa_a%d.csv'%a))
+    models_usa.append(pd.read_csv('../c/output/vars1_usa_trump2025_r%d_d%d_a%d.csv'%(r,d,a)))
+
+    process_results(models_usa)
+
+    return models_usa
+
+
+def process_results(models_usa):
                         
     for m in models_usa:
         m['nx']=m['nx1']+m['nx2']
@@ -65,8 +83,6 @@ def load_results(t,s,c,r,d,a):
             if('nx' in col ):
                 m[col] = m[col]/m.ngdp                
 
-    return models_usa
-
 
 t=25
 d=0
@@ -82,6 +98,7 @@ df_f = [load_results(t,s,2,r,d,a) for s in [20,21,23,24,26]]
 df_all_ret = load_results(t,6,2,1,0,4)
 df_all_trans = load_results(t,6,2,0,1,4)
 df_all_noadj = load_results(t,6,2,0,0,0)
+df_trump2025 = load_results_trump2025(0,0,4)
 
 
 slabels=['Oil','Steel','Toys','Cars']
@@ -329,7 +346,7 @@ for s2 in range(4):
 data['Total'] = pct_chg(df_all_ret,'lg')
 data = pd.DataFrame(data)
 fname = 'fig_dyn_labor_goods_atb_retaliation'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.25))
+plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))
 
 # ATB tariffs w/ no adj costs
 data = {}
@@ -338,7 +355,7 @@ for s2 in range(4):
 data['Total'] = pct_chg(df_all_noadj,'lg')
 data = pd.DataFrame(data)
 fname = 'fig_dyn_labor_goods_atb_noadj'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.25))
+plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))
 
 # ATB tariffs w/ reversal
 data = {}
@@ -347,7 +364,16 @@ for s2 in range(4):
 data['Total'] = pct_chg(df_all_trans,'lg')
 data = pd.DataFrame(data)
 fname = 'fig_dyn_labor_goods_atb_temp'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.25))
+plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))
+
+# Trump 2025 tariff matrix
+data = {}
+for s2 in range(4):
+    data[slabels[s2]] = diff_pct_lg(df_trump2025,'l%d'%s2)
+data['Total'] = pct_chg(df_trump2025,'lg')
+data = pd.DataFrame(data)
+fname = 'fig_dyn_labor_goods_trump2025'
+plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))
 
 
 plt.close('all')
