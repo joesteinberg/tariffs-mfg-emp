@@ -1,46 +1,46 @@
-ind,elast_CP,elast_BFE,name
-A01_02,9.11,2.95,Agriculture
-A03,9.11,2.95,Fishing
-B05_06,13.53,18.3,Mining (energy)
-B07_08,13.53,18.3,Mining (non-energy)
-B09,13.53,18.3,Mining support
-C10T12,2.62,15.8,Food + beverages
-C13T15,8.1,3.175,Textiles
-C16,11.5,7,Wood products
-C17_18,16.52,3.35,Paper products
-C19,64.85,10.7,Refined petroleum
-C20,3.13,17.25,Chemicals
-C21,3.13,17.25,Pharmateuticals
-C22,1.67,46.9,Rubber + plastics
-C23,2.41,6,Minerals
-C24,3.28,17.75,Basic metals
-C25,6.99,17.75,Fabricated metals
-C26,12.95,40.25,Electronics
-C27,12.91,40.25,Electrical equipment
-C28,1.45,55.9,Machinery + equipment
-C29,1.84,43.1,Motor vehicles
-C30,0.39,43.1,Other trans. equip.
-C31T33,3.98,45.9,Other mfg
-D,,,Electricity + gas supply
-E,,,Water supply + sewage
-F,,,Construction
-G,,,Wholesale + retail trade
-H49,,,Land transport
-H50,,,Water transport
-H51,,,Air transport
-H52,,,Transport logistics
-H53,,,Postal + courier services
-I,,,Accomodates + food services
-J58T60,,,Publishing + broadcasting
-J61,,,Telecommunications
-J62_63,,,Information services
-K,,,Finance + insurance
-L,,,Real estate 
-M,,,Professional services
-N,,,Administrative services
-O,,,Government
-P,,,Education
-Q,,,Health + social work
-R,,,Arts + entertainment
-S,,,Other services
-T,,,Activities of households as employers
+ind,elast_CP,name
+A01_02,9.11,Agriculture
+A03,9.11,Fishing
+B05_06,13.53,Mining (energy)
+B07_08,13.53,Mining (non-energy)
+B09,13.53,Mining support
+C10T12,2.62,Food + beverages
+C13T15,8.1,Textiles
+C16,11.5,Wood products
+C17_18,16.52,Paper products
+C19,64.85,Refined petroleum
+C20,3.13,Chemicals
+C21,3.13,Pharmateuticals
+C22,1.67,Rubber + plastics
+C23,2.41,Minerals
+C24,3.28,Basic metals
+C25,6.99,Fabricated metals
+C26,12.95,Electronics
+C27,12.91,Electrical equipment
+C28,1.45,Machinery + equipment
+C29,1.84,Motor vehicles
+C30,0.39,Other trans. equip.
+C31T33,3.98,Other mfg
+D,,Electricity + gas supply
+E,,Water supply + sewage
+F,,Construction
+G,,Wholesale + retail trade
+H49,,Land transport
+H50,,Water transport
+H51,,Air transport
+H52,,Transport logistics
+H53,,Postal + courier services
+I,,Accomodates + food services
+J58T60,,Publishing + broadcasting
+J61,,Telecommunications
+J62_63,,Information services
+K,,Finance + insurance
+L,,Real estate 
+M,,Professional services
+N,,Administrative services
+O,,Government
+P,,Education
+Q,,Health + social work
+R,,Arts + entertainment
+S,,Other services
+T,,Activities of households as employers

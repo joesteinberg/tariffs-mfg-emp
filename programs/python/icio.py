@@ -156,7 +156,7 @@ print(U2[['ind','name','U']].sort_values(by='U'))
 
 #############################################################################
 print('\nComputing trade elasticities...')
-elasts = pd.read_csv('../../data/industry_names_elasts.csv')[['ind','elast_CP','elast_BFE']].rename(columns={'ind':'row_sector'})
+elasts = pd.read_csv('../../data/industry_names_elasts.csv')[['ind','elast_CP']].rename(columns={'ind':'row_sector'})
 
 merged = pd.merge(left=agged,right=elasts,how='left',on='row_sector')
 trd = merged[ (merged.col_region!=merged.row_region) &
@@ -168,7 +168,7 @@ trd = merged[ (merged.col_region!=merged.row_region) &
 
 # first, compute weighted average elasticity by industry
 wavg = lambda x: np.average(x,weights=trd.loc[x.index,'value'])
-e = trd.groupby(['row_sector'])[['elast_CP','elast_BFE']].agg(wavg).reset_index()
+e = trd.groupby(['row_sector'])[['elast_CP']].agg(wavg).reset_index()
 
 #############################################################################
 print('\nDefining sectoral aggregation using hierarchical clustering...')
@@ -1014,6 +1014,5 @@ for i in range(5):
     
     plt.clf()
     fcnt +=1
-
 
 

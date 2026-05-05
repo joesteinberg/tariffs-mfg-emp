@@ -11,7 +11,7 @@ find "$dest/tables" -maxdepth 1 -type f -name '*.tex' ! -name 'calibration.tex' 
 
 find "$repo_root/programs/python/output" -maxdepth 1 -type f -name '*.pdf' ! -name '.*' \
   -exec cp -p {} "$dest/figures/" \;
-find "$repo_root/programs/python/output" -maxdepth 1 -type f -name '*.tex' \
+find "$repo_root/programs/python/output" -maxdepth 1 -type f -name '*.tex' ! -name 'calibration.tex' \
   -exec cp -p {} "$dest/tables/" \;
 
 cat > "$dest/.gitignore" <<'GITIGNORE'
