@@ -25,7 +25,9 @@ All data used by this project are publicly available and are included in this re
 | U.S. Bureau of Economic Analysis, Components of Value Added by Industry | `data/ComponentsOfVa.xlsx` | Yes | Downloaded from BEA GDP by Industry table TVA113, "Components of Value Added by Industry." The code uses sheet `UVCT2-A`, compensation of employees. The `ICIO Industry Code` column was manually added for merging with the ICIO industry codes. Accessed May 5, 2026. |
 | Industry names and trade elasticities | `data/industry_names_elasts.csv` | Yes | Author-created file mapping ICIO industries to short names and trade elasticities. The `elast_CP` values are from the 99 percent sample estimates in Table 1 of Caliendo and Parro (2015). Accessed May 5, 2026. |
 | Trade War Tracker HS10 import and duty data | `external/how-restrictive-us-trade/` | No | Cloned from https://github.com/tradewartracker/how-restrictive-us-trade. The Trump 2025 tariff script uses Census HS10 import values and calculated duties from this repository. |
-| WITS HS2022-to-GTAP concordance | Downloaded by `programs/python/trump2025_tariffs.py` | No | World Bank WITS concordance file `Concordance_H6_to_GP.zip`, https://wits.worldbank.org/product_concordance.html. |
+| WITS HS2022-to-HS2007 concordance | `data/concordances/Concordance_H6_to_H3.zip` | Yes | World Bank WITS concordance file `Concordance_H6_to_H3.zip`, https://wits.worldbank.org/product_concordance.html. Used to bridge HS2022-style HS6 products to HS2007 before applying the ISIC concordance. Accessed May 12, 2026. |
+| HS2007-to-ISIC Rev. 4 concordance | `data/concordances/hs2007_to_isic4_roy_zenodo.do` | Yes | Roy, "Harmonized System (HS) 6 Digit to ISIC Rev 4 Concordance," Zenodo, DOI `10.5281/zenodo.16901880`. Used to map HS2007 products to ISIC Rev. 4 two-digit industries. Accessed May 12, 2026. |
+| WITS HS2022-to-GTAP concordance | `data/concordances/Concordance_H6_to_GP.zip` | Yes | World Bank WITS concordance file `Concordance_H6_to_GP.zip`, https://wits.worldbank.org/product_concordance.html. Preserved to reproduce the earlier GTAP-based tariff aggregation with `--concordance-method gtap`. Accessed May 12, 2026. |
 
 ### Dataset List
 
@@ -34,6 +36,7 @@ All data used by this project are publicly available and are included in this re
 | `data/2020_SML.csv` | CSV | `programs/python/icio.py` | Raw 2020 OECD ICIO matrix used to construct the three-region, six-sector input-output table. The paper discusses this data construction in Section 3.1, "Sectoral aggregation." |
 | `data/ComponentsOfVa.xlsx` | Excel workbook | `programs/python/icio.py` | BEA compensation-of-employees data used to compute sectoral employment compensation shares for the sector classification summary. The paper references this source in the notes to Table 1. |
 | `data/industry_names_elasts.csv` | CSV | `programs/python/icio.py` | Author-created industry-code crosswalk containing industry names and Caliendo-Parro trade elasticities. These elasticities enter the clustering described in Section 3.1 and summarized in Table 1. |
+| `data/concordances/` | ZIP and Stata `.do` files | `programs/python/trump2025_tariffs.py` | Preserved public concordance files for aggregating HS tariff shocks into model sectors. See `data/concordances/README.md` for sources and SHA-256 hashes. |
 | `programs/python/output/trump2025_tariffs.csv` | CSV | `programs/c/src/trump2025_tariffs.h` | Generated sector/source tariff rates for the Trump 2025 scenario. Rates are December 2025 HS10 duty rates minus 2024 baseline duty rates, clipped at zero and weighted by 2024 imports. |
 | `programs/python/output/trump2025_tariff_diagnostics.csv` | CSV | Diagnostics | Generated diagnostics for the Trump 2025 tariff construction, including unmatched import shares and aggregate weighted tariff checks. |
 
@@ -100,9 +103,21 @@ Main outputs:
 
 ### `programs/python/trump2025_tariffs.py`
 
-This script builds the Trump 2025 tariff matrix used by the C model. It expects Trade War Tracker data cloned to `external/how-restrictive-us-trade/`, downloads the WITS HS2022-to-GTAP concordance if a local `--gtap-concordance` file is not supplied, and writes sector/source tariff rates for China and rest of world.
+This script builds the Trump 2025 tariff matrix used by the C model. It expects Trade War Tracker data cloned to `external/how-restrictive-us-trade/` and writes sector/source tariff rates for China and rest of world.
 
-The tariff shock is computed at the HS10 level as the December 2025 duty/import rate minus the 2024 duty/import baseline, clipped at zero, and then aggregated with 2024 import weights. HS10 products are truncated to HS6 and mapped to the model's four goods sectors through the WITS GTAP concordance.
+The tariff shock is computed at the HS10 level as the December 2025 duty/import rate minus the 2024 duty/import baseline, clipped at zero, and then aggregated with 2024 import weights. HS10 products are truncated to HS6 and mapped to the model's four goods sectors through an ICIO-consistent concordance:
+
+```text
+HS10 tariff line -> HS6 product -> HS2007 HS6 -> ISIC Rev. 4 two-digit industry -> OECD ICIO industry -> model sector
+```
+
+The default concordance route uses the preserved files in `data/concordances/`: WITS HS2022-to-HS2007, Roy's HS2007-to-ISIC Rev. 4 rules, and the ICIO-to-model sector grouping generated by `programs/python/icio.py` and reported in `programs/python/output/sectors.tex`. The script first uses these local files; if they are missing, it downloads the public concordances. More detail, including the mapping tables, is in `docs/tariff_sector_concordance.md`.
+
+The earlier WITS HS2022-to-GTAP route is preserved for comparison and can be run with:
+
+```bash
+python3 programs/python/trump2025_tariffs.py --concordance-method gtap
+```
 
 Main outputs:
 
@@ -235,27 +250,35 @@ cd programs/python
 python3 icio.py
 ```
 
-4. Compile the C model:
+4. Optional: regenerate the Trump 2025 sector/source tariff matrix:
+
+```bash
+python3 trump2025_tariffs.py
+```
+
+The generated C header is already included in the repository, so this step is only needed if the tariff construction should be refreshed.
+
+5. Compile the C model:
 
 ```bash
 cd ../c
 make model
 ```
 
-5. Run all model exercises used by the paper figures:
+6. Run all model exercises used by the paper figures:
 
 ```bash
 ./run_all.sh
 ```
 
-6. Create figures from the model outputs:
+7. Create figures from the model outputs:
 
 ```bash
 cd ../python
 python3 results.py
 ```
 
-7. Optional: sync generated outputs to the external writing folder:
+8. Optional: sync generated outputs to the external writing folder:
 
 ```bash
 cd ../..
@@ -300,4 +323,8 @@ Caliendo, Lorenzo, and Fernando Parro. 2015. "Estimates of the Trade and Welfare
 
 OECD. 2023. "OECD Inter-Country Input-Output Tables." Accessed May 5, 2026. https://www.oecd.org/en/data/datasets/inter-country-input-output-tables.html
 
+Roy, Jayjit. 2025. "Harmonized System (HS) 6 Digit to ISIC Rev 4 Concordance." Zenodo. Accessed May 12, 2026. https://doi.org/10.5281/zenodo.16901880
+
 Steinberg, Joseph B. 2025. "Tariffs, Manufacturing Employment, and Supply Chains." *NBER Working Paper* 34236. https://doi.org/10.3386/w34236
+
+World Bank. n.d. "WITS Product Concordance." Accessed May 12, 2026. https://wits.worldbank.org/product_concordance.html
