@@ -279,7 +279,7 @@ static inline double prod_m_chk(const params * p, const eqm * e, uint t, uint i,
     prod_m(e->m2_t[t][i][s], p->M[i][s], p->mu[i][s], p->zeta[i][s]);
   
   int j;
-  for(j=0; j>NC; j++)
+  for(j=0; j<NC; j++)
     {
       if(t>0)
 	{
@@ -310,7 +310,7 @@ static inline double prod_q_chk(const params * p, const eqm * e, uint t, uint i,
     prod_q(e->q2_t[t][i][s], p->H[i][s], p->theta[i][s], p->sig[i][s]);
   
   int j;
-  for(j=0; j>NC; j++)
+  for(j=0; j<NC; j++)
     {
       if(t>0)
 	{
@@ -337,8 +337,11 @@ static inline double foc_m2(const params * p, const eqm * e, uint t, uint i, uin
 {
   double tmp = 0.0;
 
+  // marginal product evaluated at the gross composite CES(m2); adjustment costs are
+  // deducted from the composite in prod_m_chk
+  double gross = prod_m(e->m2_t[t][i][s], p->M[i][s], p->mu[i][s], p->zeta[i][s]);
   tmp = e->pm_t[t][i][s] * p->mu[i][s][j] * pow(p->M[i][s],p->zeta[i][s])
-    * pow(e->m_t[t][i][s]/e->m2_t[t][i][s][j],1.0 - p->zeta[i][s]);
+    * pow(gross/e->m2_t[t][i][s][j],1.0 - p->zeta[i][s]);
   
   tmp = tmp - (1.0+p->tau_m_ts[t][i][s][j]) * e->py_t[t][j][s];
   
@@ -362,8 +365,9 @@ static inline double foc_q2(const params * p, const eqm * e, uint t, uint i, uin
 {
   double tmp = 0.0;
 
+  double gross = prod_q(e->q2_t[t][i][s], p->H[i][s], p->theta[i][s], p->sig[i][s]);
   tmp = e->p_t[t][i][s] * p->theta[i][s][j] * pow(p->H[i][s],p->sig[i][s])
-    * pow(e->q_t[t][i][s]/e->q2_t[t][i][s][j],1.0 - p->sig[i][s]);
+    * pow(gross/e->q2_t[t][i][s][j],1.0 - p->sig[i][s]);
   
   tmp = tmp - (1.0+p->tau_f_ts[t][i][s][j]) * e->py_t[t][j][s];
   
