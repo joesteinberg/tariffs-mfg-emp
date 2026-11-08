@@ -41,82 +41,37 @@ def which_bottom(bottom_p, bottom_n, data):
 
 
 ##########################################################################
-# load the results
+# load the results (see model_io.py for options: --cdir, --out, --ghh)
 
-def load_results(t,s,c,r,d,a):
+import os
+from model_io import (parse_args, load_results, load_results_trump2025, have,
+                      pct_chg, diff_pct_lg, pp_chg, SLABELS, SCENARIOS, SCEN_CODES)
 
-    models_usa=[]
-    models_usa.append(pd.read_csv('../c/output/vars0_usa_a%d.csv'%a))
-    models_usa.append(pd.read_csv('../c/output/vars1_usa_t%d_s%d_c%d_r%d_d%d_a%d.csv'%(t,s,c,r,d,a)))
+args = parse_args()
 
-    process_results(models_usa)
+def savefig(fname):
+    plt.savefig(os.path.join(args.out, fname + args.suffix + '.pdf'))
 
-    return models_usa
-
-
-def load_results_trump2025(r,d,a):
-
-    models_usa=[]
-    models_usa.append(pd.read_csv('../c/output/vars0_usa_a%d.csv'%a))
-    models_usa.append(pd.read_csv('../c/output/vars1_usa_trump2025_r%d_d%d_a%d.csv'%(r,d,a)))
-
-    process_results(models_usa)
-
-    return models_usa
-
-
-def process_results(models_usa):
-                        
-    for m in models_usa:
-        m['nx']=m['nx1']+m['nx2']
-        m['rer'] = m['rer1']*models_usa[0]['ex1'].values[0] + m['rer2']*models_usa[0]['ex2'].values[0]
-        m['lg']=m['l0']+m['l1']+m['l2']+m['l3']
-        for s in [0,1,2,3,4]:
-            m['nxs'+str(s)]=m['nxs'+str(s)+'-1']+m['nxs'+str(s)+'-2']
-            m['exs'+str(s)]=m['exs'+str(s)+'-1']+m['exs'+str(s)+'-2']
-            m['ims'+str(s)]=m['ims'+str(s)+'-1']+m['ims'+str(s)+'-2']
-
-        m['img'] = m['ims0'] + m['ims1'] + m['ims2'] + m['ims3']
-        m['exg'] = m['exs0'] + m['exs1'] + m['exs2'] + m['exs3']
-        m['nxg'] = m['nxs0'] + m['nxs1'] + m['nxs2'] + m['nxs3']
-        for col in m.columns:
-            if('nx' in col ):
-                m[col] = m[col]/m.ngdp                
-
+def skipped(what):
+    print('results.py: skipping %s (model output not found in %s)' % (what, args.cdir))
 
 t=25
 d=0
 r=0
 a=4
 
-df_all = [load_results(t,s,2,r,d,a) for s in [0,1,3,4,6]]
-df_chn = [load_results(t,s,0,r,d,a) for s in [0,1,3,4,6]]
-df_row = [load_results(t,s,1,r,d,a) for s in [0,1,3,4,6]]
-df_m = [load_results(t,s,2,r,d,a) for s in [10,11,13,14,16]]
-df_f = [load_results(t,s,2,r,d,a) for s in [20,21,23,24,26]]
+df_all = [load_results(t,s,2,r,d,a,args) for s in SCEN_CODES]
+df_chn = [load_results(t,s,0,r,d,a,args) for s in SCEN_CODES]
+df_row = [load_results(t,s,1,r,d,a,args) for s in SCEN_CODES]
+df_m = [load_results(t,s,2,r,d,a,args) for s in [10,11,13,14,16]]
+df_f = [load_results(t,s,2,r,d,a,args) for s in [20,21,23,24,26]]
 
-df_all_ret = load_results(t,6,2,1,0,4)
-df_all_trans = load_results(t,6,2,0,1,4)
-df_all_noadj = load_results(t,6,2,0,0,0)
-df_trump2025 = load_results_trump2025(0,0,4)
+df_all_ret = load_results(t,6,2,1,0,4,args)
+df_all_trans = load_results(t,6,2,0,1,4,args)
+df_all_noadj = load_results(t,6,2,0,0,0,args)
+df_trump2025 = load_results_trump2025(0,0,4,args)
 
-
-slabels=['Oil','Steel','Toys','Cars']
-
-def pct_chg(df,variable):
-    return (100*(df[1][variable]/df[0][variable] - 1)).values
-
-def diff_pct_lg(df,variable):
-    return (100*(df[1][variable]-df[0][variable])/df[0]['lg']).values
-
-def diff_pct_ll(df,variable):
-    return (100*(df[1][variable]-df[0][variable])/df[0]['ll']).values
-
-def diff_pct_ii(df,variable):
-    return (100*(df[1][variable]-df[0][variable])/df[0]['ii']).values
-
-def pp_chg(df,variable):
-    return (100*(df[1][variable]-df[0][variable])).values
+slabels = SLABELS
 
 def create_fig(size=(3.25,3.25)):
     fig, ax = plt.subplots(figsize=size,tight_layout = {'pad': 0})
@@ -129,7 +84,10 @@ def create_fig(size=(3.25,3.25)):
 ##########################################################################
 # transitions: one set of plots per scenario
 
-mperiods = df_all[0][0].period.values
+_avail = [x for x in df_all + [df_trump2025] if x is not None]
+if not _avail:
+    raise SystemExit('results.py: no model output found in %s' % args.cdir)
+mperiods = _avail[0][0].period.values
 
 def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.25),noxlab=False,ncl=1):
 
@@ -175,11 +133,11 @@ def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.2
     ax.axhline(0.0,color='black',lw=1)
             
     fig.tight_layout()
-    plt.savefig('output/' + fname + '.pdf')
+    savefig(fname)
     plt.clf()
 
 # industry-level goods employment in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
         data[slabels[s2]] = diff_pct_lg(df_all[s],'l%d'%s2)
@@ -190,7 +148,7 @@ for s in range(5):
     plt.close('all')
 
 # sector-level employment in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     data['Goods'] = pct_chg(df_all[s],'lg')
     data['Svcs'] = pct_chg(df_all[s],'l4')
@@ -201,7 +159,7 @@ for s in range(5):
     plt.close('all')
     
 # go in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
         data[slabels[s2]] = pct_chg(df_all[s],'y%d'%s2)
@@ -212,7 +170,7 @@ for s in range(5):
     plt.close('all')
 
 # inv in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
         data[slabels[s2]] = pct_chg(df_all[s],'i%d'%s2)
@@ -223,7 +181,7 @@ for s in range(5):
     plt.close('all')
 
 # capital costs in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
         data[slabels[s2]] = pct_chg(df_all[s],'rks%d'%s2)
@@ -234,7 +192,7 @@ for s in range(5):
     plt.close('all')
 
 # materials costs in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
         data[slabels[s2]] = pct_chg(df_all[s],'pm2s%d'%s2)
@@ -245,7 +203,7 @@ for s in range(5):
     plt.close('all')
 
 # intermediate prices in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
         data[slabels[s2]] = pct_chg(df_all[s],'pm%d'%s2)
@@ -257,7 +215,7 @@ for s in range(5):
     plt.close('all')
 
 # final prices in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
         data[slabels[s2]] = pct_chg(df_all[s],'pf%d'%s2)
@@ -268,7 +226,7 @@ for s in range(5):
     plt.close('all')
 
 # imports in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
         data[slabels[s2]] = pct_chg(df_all[s],'ims%d'%s2)
@@ -279,7 +237,7 @@ for s in range(5):
     plt.close('all')
 
 # exports in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
         data[slabels[s2]] = pct_chg(df_all[s],'exs%d'%s2)
@@ -290,18 +248,18 @@ for s in range(5):
     plt.close('all')
 
 # net exports in each scenario
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     for s2 in range(4):
-        data[slabels[s2]] = pp_chg(df_all[s],'nxs%d'%s2)
-    data['Total'] = pp_chg(df_all[s],'nxg')
+        data[slabels[s2]] = pp_chg(df_all[s],'nxs%d_y'%s2)
+    data['Total'] = pp_chg(df_all[s],'nxg_y')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_nx_goods_s%d'%s
     plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-1,2),ncl=2)
     plt.close('all')
 
 # real exchange rate
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     data = {}
     data['REER'] = pct_chg(df_all[s],'rer')
     data = pd.DataFrame(data)
@@ -312,72 +270,75 @@ for s in range(5):
 
     
     
-# GDP across scenarios
-scenarios = ['Oil','Steel','Toys','Cars','All']
-data={}
-for s in [0,1,2,3,4]:
-    data[scenarios[s]] = pct_chg(df_all[s],'rgdp')
-fname = 'fig_dyn_macro'
-data = pd.DataFrame(data)
-plot_dyn(data,fname,ylabel = 'percent change',size=(3.25*0.5/0.4,3.4),lr_bars=True)
+# GDP and consumption across scenarios
+scenarios = SCENARIOS
+if have(df_all):
+    for var,fname in [('rgdp','fig_dyn_macro'),('cagg','fig_dyn_consumption')]:
+        data = pd.DataFrame({scenarios[s]: pct_chg(df_all[s],var) for s in range(5)})
+        plot_dyn(data,fname,ylabel = 'percent change',size=(3.25*0.5/0.4,3.4),lr_bars=True)
+else:
+    skipped('fig_dyn_macro, fig_dyn_consumption')
 
-scenarios = ['Oil','Steel','Toys','Cars','All']
-data={}
-for s in [0,1,2,3,4]:
-    data[scenarios[s]] = pct_chg(df_all[s],'c')
-fname = 'fig_dyn_consumption'
-data = pd.DataFrame(data)
-plot_dyn(data,fname,ylabel = 'percent change',size=(3.25*0.5/0.4,3.4),lr_bars=True)
+def plot_goods_labor(df, fname, ylabel='change (percent total goods emp)'):
+    if df is None:
+        skipped(fname)
+        return
+    data = {slabels[s2]: diff_pct_lg(df,'l%d'%s2) for s2 in range(4)}
+    data['Total'] = pct_chg(df,'lg')
+    plot_dyn(pd.DataFrame(data),fname,ylim=(-2,3),lr_bars=True,ylabel=ylabel,size=(3.25,3.25))
 
-
-## resized main graph
-data = {}
-for s2 in range(4):
-    data[slabels[s2]] = diff_pct_lg(df_all[4],'l%d'%s2)
-data['Total'] = pct_chg(df_all[4],'lg')
-data = pd.DataFrame(data)
-fname = 'fig_dyn_labor_goods_atb_resize'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change in sectoral emp (percent total goods emp)',size=(3.25,3.25))
-
-# ATB tariffs w/ retaliation
-data = {}
-for s2 in range(4):
-    data[slabels[s2]] = diff_pct_lg(df_all_ret,'l%d'%s2)
-data['Total'] = pct_chg(df_all_ret,'lg')
-data = pd.DataFrame(data)
-fname = 'fig_dyn_labor_goods_atb_retaliation'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))
-
-# ATB tariffs w/ no adj costs
-data = {}
-for s2 in range(4):
-    data[slabels[s2]] = diff_pct_lg(df_all_noadj,'l%d'%s2)
-data['Total'] = pct_chg(df_all_noadj,'lg')
-data = pd.DataFrame(data)
-fname = 'fig_dyn_labor_goods_atb_noadj'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))
-
-# ATB tariffs w/ reversal
-data = {}
-for s2 in range(4):
-    data[slabels[s2]] = diff_pct_lg(df_all_trans,'l%d'%s2)
-data['Total'] = pct_chg(df_all_trans,'lg')
-data = pd.DataFrame(data)
-fname = 'fig_dyn_labor_goods_atb_temp'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))
-
-# Trump 2025 tariff matrix
-data = {}
-for s2 in range(4):
-    data[slabels[s2]] = diff_pct_lg(df_trump2025,'l%d'%s2)
-data['Total'] = pct_chg(df_trump2025,'lg')
-data = pd.DataFrame(data)
-fname = 'fig_dyn_labor_goods_trump2025'
-plot_dyn(data,fname,ylim=(-2,3),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))
-
+plot_goods_labor(df_all[4], 'fig_dyn_labor_goods_atb_resize', 'change in sectoral emp (percent total goods emp)')
+plot_goods_labor(df_all_ret, 'fig_dyn_labor_goods_atb_retaliation')   # ATB tariffs w/ retaliation
+plot_goods_labor(df_all_noadj, 'fig_dyn_labor_goods_atb_noadj')       # ATB tariffs w/ no adj costs
+plot_goods_labor(df_all_trans, 'fig_dyn_labor_goods_atb_temp')        # ATB tariffs w/ reversal
+plot_goods_labor(df_trump2025, 'fig_dyn_labor_goods_trump2025')       # Trump 2025 tariff matrix
 
 plt.close('all')
     
+
+
+##########################################################################
+# external accounts and labor decomposition
+
+def plot_tb(df, fname):
+    """Change in the trade balance / GDP (pp): by type, bilateral, and total."""
+    if df is None:
+        skipped(fname)
+        return
+    data = pd.DataFrame({'Goods': pp_chg(df,'nxg_y'), 'Services': pp_chg(df,'nxsvc_y'),
+                         'China': pp_chg(df,'nx1_y'), 'RoW': pp_chg(df,'nx2_y'), 'Total': pp_chg(df,'nx_y')})
+    plot_dyn(data,fname,lr_bars=True,ylabel='change in trade balance (pp of GDP)',size=(3.25,3.25),ncl=2)
+    plt.close('all')
+
+for s in range(5):
+    plot_tb(df_all[s], 'fig_dyn_tb_s%d'%s)
+plot_tb(df_trump2025, 'fig_dyn_tb_trump2025')
+
+if have(df_all):
+    for var,fname,ylabel in [('nx_y','fig_dyn_tb_across','change in trade balance (pp of GDP)'),
+                             ('b_y','fig_dyn_nfa_across','change in NFA (pp of GDP)')]:
+        if var not in df_all[0][0]:
+            skipped(fname + ' (needs revised model output)')
+            continue
+        data = pd.DataFrame({scenarios[s]: pp_chg(df_all[s],var) for s in range(5)})
+        plot_dyn(data,fname,ylabel=ylabel,size=(3.25*0.5/0.4,3.4),lr_bars=True)
+        plt.close('all')
+else:
+    skipped('fig_dyn_tb_across, fig_dyn_nfa_across')
+
+def plot_labor_decomp(df, fname):
+    """dlog goods emp = dlog total labor + dlog goods share (log points x 100)."""
+    if df is None:
+        skipped(fname)
+        return
+    g = 100*np.log(df[1]['lg']/df[0]['lg']).values
+    l = 100*np.log(df[1]['ll']/df[0]['ll']).values
+    data = pd.DataFrame({'Total labor': l, 'Goods share': g-l, 'Goods emp': g})
+    plot_dyn(data,fname,lr_bars=True,ylabel='log change (x100)',size=(3.25,3.25))
+    plt.close('all')
+
+plot_labor_decomp(df_all[4], 'fig_dyn_labor_decomp_s4')
+plot_labor_decomp(df_trump2025, 'fig_dyn_labor_decomp_trump2025')
 
 
 ##########################################################################
@@ -385,182 +346,173 @@ plt.close('all')
 
 width=0.75
 
-data1 = np.array([pct_chg(df_all[s],'lg')[-1] for s in range(0,5)])
-data_df1 = pd.DataFrame({'emp_chg1':data1,'scenario':scenarios}).sort_values(by='emp_chg1',ascending=False)
+lr = lambda dfs, var, f=pct_chg: np.array([f(x,var)[-1] if x is not None else np.nan for x in dfs])
 
-data2 = np.array([pct_chg(df_chn[s],'lg')[-1] for s in range(0,5)])
-data_df2 = pd.DataFrame({'emp_chg2':data2,'scenario':scenarios})
-
-data3 = np.array([pct_chg(df_row[s],'lg')[-1] for s in range(0,5)])
-data_df3 = pd.DataFrame({'emp_chg3':data3,'scenario':scenarios})
-
-data4 = np.array([pct_chg(df_all[s],'rgdp')[-1] for s in range(0,5)])
-data_df4 = pd.DataFrame({'gdp_chg':data4,'scenario':scenarios})
-
-data5 = np.array([pct_chg(df_m[s],'lg')[-1] for s in range(0,5)])
-data_df5 = pd.DataFrame({'emp_chg_m':data5,'scenario':scenarios})
-
-data6 = np.array([pct_chg(df_f[s],'lg')[-1] for s in range(0,5)])
-data_df6 = pd.DataFrame({'emp_chg_f':data6,'scenario':scenarios})
-
-data_df = pd.merge(left=data_df1,right=data_df2,how='left',on='scenario')
-data_df = pd.merge(left=data_df,right=data_df3,how='left',on='scenario')
-data_df = pd.merge(left=data_df,right=data_df4,how='left',on='scenario')
-data_df = pd.merge(left=data_df,right=data_df5,how='left',on='scenario')
-data_df = pd.merge(left=data_df,right=data_df6,how='left',on='scenario')
-
+data_df = pd.DataFrame({'scenario':scenarios,
+                        'emp_chg1':lr(df_all,'lg'), 'emp_chg2':lr(df_chn,'lg'), 'emp_chg3':lr(df_row,'lg'),
+                        'gdp_chg':lr(df_all,'rgdp'), 'emp_chg_m':lr(df_m,'lg'), 'emp_chg_f':lr(df_f,'lg')})
 for s2 in range(0,4):
-    data7 = np.array([diff_pct_lg(df_all[s],'l%d'%s2)[-1] for s in range(0,5)])
-    data_df7 = pd.DataFrame({'emp_chg_s%d'%s2:data7,'scenario':scenarios})
-    data_df = pd.merge(left=data_df,right=data_df7,how='left',on='scenario')
+    data_df['emp_chg_s%d'%s2] = lr(df_all,'l%d'%s2,diff_pct_lg)
+data_df = data_df.sort_values(by='emp_chg1',ascending=False).reset_index(drop=True)
 
     
-# just total employment
-fig,ax=create_fig()
-ax.bar(data_df.scenario, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1)
-ax.axhline(0.0,color='black',ls='-',lw=0.5)
-ax.set_ylim(-2.5,5.5)
-ax.set_xlabel('targeted sector')
-ax.set_ylabel('percent chg in goods emp')
-fig.tight_layout()    
-plt.savefig('output/fig_lr_emp_across_scenarios_all.pdf')
-plt.clf()
+if have(df_all):
+    # just total employment
+    fig,ax=create_fig()
+    ax.bar(data_df.scenario, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1)
+    ax.axhline(0.0,color='black',ls='-',lw=0.5)
+    ax.set_ylim(-2.5,5.5)
+    ax.set_xlabel('targeted sector')
+    ax.set_ylabel('percent chg in goods emp')
+    fig.tight_layout()    
+    savefig('fig_lr_emp_across_scenarios_all')
+    plt.clf()
 
-# add stacked bar showing sectoral impacts
-x = np.arange(len(scenarios))
-width=0.75/2
+    # add stacked bar showing sectoral impacts
+    x = np.arange(len(scenarios))
+    width=0.75/2
 
-fig,ax=create_fig()    
-ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Total')
+    fig,ax=create_fig()    
+    ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Total')
 
-bottom_pos=np.zeros(len(scenarios))
-bottom_neg=np.zeros(len(scenarios))
+    bottom_pos=np.zeros(len(scenarios))
+    bottom_neg=np.zeros(len(scenarios))
 
-bcnt=0
-for s2 in range(0,4):
-    values = data_df['emp_chg_s%d'%s2]
+    bcnt=0
+    for s2 in range(0,4):
+        values = data_df['emp_chg_s%d'%s2]
+        bottom=which_bottom(bottom_pos,bottom_neg,values)
+        ax.bar(x+width/2, values, width, label=slabels[s2], bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
+        bottom_pos=bottom_pos+vmax(values)
+        bottom_neg=bottom_neg+vmin(values)
+        bcnt += 1
+
+    ax.set_xticks(x, data_df.scenario)
+    ax.axhline(0.0,color='black',ls='-',lw=1)
+    ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+    ax.set_ylim(-2.5,5.5)
+    ax.set_xlabel('targeted sector')
+    ax.set_ylabel('change (percent total goods emp)')
+    fig.tight_layout()    
+    savefig('fig_lr_emp_across_scenarios_all_vs_sectors')
+    plt.clf()
+else:
+    skipped('LR employment bars across scenarios')
+
+if have(df_all, df_chn, df_row):
+    # china only
+    fig,ax=create_fig()    
+    ax.bar(data_df.scenario, data_df.emp_chg2, width, color='black', alpha=0.99, edgecolor='black', lw=1)
+    ax.axhline(0.0,color='black',ls='-',lw=0.5)
+    ax.set_ylim(-2,3.4)
+    ax.set_xlabel('targeted sector')
+    ax.set_ylabel('percent chg in total goods emp')
+    fig.tight_layout()    
+    savefig('fig_lr_emp_across_scenarios_chn')
+    plt.clf()
+
+    # row only
+    fig,ax=create_fig()    
+    ax.bar(data_df.scenario, data_df.emp_chg3, width, color='black', alpha=0.99, edgecolor='black', lw=1)
+    ax.axhline(0.0,color='black',ls='-',lw=0.5)
+    ax.set_ylim(-2,3.4)
+    ax.set_xlabel('targeted sector')
+    ax.set_ylabel('percent chg in total goods emp')
+    fig.tight_layout()    
+    savefig('fig_lr_emp_across_scenarios_row')
+    plt.clf()
+
+    # compare all vs china/row only
+    x = np.arange(len(scenarios))
+    width=0.75/2
+
+    fig,ax=create_fig()    
+    ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Both')
+
+    bottom_pos=np.zeros(len(scenarios))
+    bottom_neg=np.zeros(len(scenarios))
+
+    bcnt=0
+    values = data_df.emp_chg2
     bottom=which_bottom(bottom_pos,bottom_neg,values)
-    ax.bar(x+width/2, values, width, label=slabels[s2], bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
+    ax.bar(x+width/2, values, width, label='China only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
     bottom_pos=bottom_pos+vmax(values)
     bottom_neg=bottom_neg+vmin(values)
     bcnt += 1
 
-ax.set_xticks(x, data_df.scenario)
-ax.axhline(0.0,color='black',ls='-',lw=1)
-ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-ax.set_ylim(-2.5,5.5)
-ax.set_xlabel('targeted sector')
-ax.set_ylabel('change (percent total goods emp)')
-fig.tight_layout()    
-plt.savefig('output/fig_lr_emp_across_scenarios_all_vs_sectors.pdf')
-plt.clf()
+    values = data_df.emp_chg3
+    bottom=which_bottom(bottom_pos,bottom_neg,values)
+    ax.bar(x+width/2, values, width, label='RoW only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
+    bottom_pos=bottom_pos+vmax(values)
+    bottom_neg=bottom_neg+vmin(values)
+    bcnt += 1
 
-# china only
-fig,ax=create_fig()    
-ax.bar(data_df.scenario, data_df.emp_chg2, width, color='black', alpha=0.99, edgecolor='black', lw=1)
-ax.axhline(0.0,color='black',ls='-',lw=0.5)
-ax.set_ylim(-2,3.4)
-ax.set_xlabel('targeted sector')
-ax.set_ylabel('percent chg in total goods emp')
-fig.tight_layout()    
-plt.savefig('output/fig_lr_emp_across_scenarios_chn.pdf')
-plt.clf()
+    ax.set_xticks(x, data_df.scenario)
+    ax.axhline(0.0,color='black',ls='-',lw=1)
+    ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+    ax.set_ylim(-2,3.4)
+    ax.set_xlabel('targeted sector')
+    ax.set_ylabel('percent change in total goods emp')
+    fig.tight_layout()    
+    savefig('fig_lr_emp_across_scenarios_compare')
+    plt.clf()
+else:
+    skipped('China-only / RoW-only comparison')
 
-# row only
-fig,ax=create_fig()    
-ax.bar(data_df.scenario, data_df.emp_chg3, width, color='black', alpha=0.99, edgecolor='black', lw=1)
-ax.axhline(0.0,color='black',ls='-',lw=0.5)
-ax.set_ylim(-2,3.4)
-ax.set_xlabel('targeted sector')
-ax.set_ylabel('percent chg in total goods emp')
-fig.tight_layout()    
-plt.savefig('output/fig_lr_emp_across_scenarios_row.pdf')
-plt.clf()
+if have(df_all):
+    # compare emp vs gdp
+    fig,ax=create_fig()    
+    ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Goods employment')
+    ax.bar(x+width/2, data_df.gdp_chg, width, color=colors[0], alpha=0.99, edgecolor='black', lw=1, label='Real GDP')
+    ax.set_xticks(x, data_df.scenario)
+    ax.axhline(0.0,color='black',ls='-',lw=1)
+    ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+    ax.set_ylim(-2,3.4)
+    ax.set_xlabel('targeted sector')
+    ax.set_ylabel('percent change')
+    fig.tight_layout()    
+    savefig('fig_lr_emp_vs_gdp')
+    plt.clf()
+else:
+    skipped('LR employment vs GDP')
 
-# compare all vs china/row only
-x = np.arange(len(scenarios))
-width=0.75/2
+if have(df_all, df_m, df_f):
+    # add stacked m vs f
+    x = np.arange(len(scenarios))
+    width=0.75/2
 
-fig,ax=create_fig()    
-ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Both')
+    fig,ax=create_fig()    
+    ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Both')
 
-bottom_pos=np.zeros(len(scenarios))
-bottom_neg=np.zeros(len(scenarios))
+    bottom_pos=np.zeros(len(scenarios))
+    bottom_neg=np.zeros(len(scenarios))
 
-bcnt=0
-values = data_df.emp_chg2
-bottom=which_bottom(bottom_pos,bottom_neg,values)
-ax.bar(x+width/2, values, width, label='China only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
-bottom_pos=bottom_pos+vmax(values)
-bottom_neg=bottom_neg+vmin(values)
-bcnt += 1
+    bcnt=0
+    values = data_df.emp_chg_m
+    bottom=which_bottom(bottom_pos,bottom_neg,values)
+    ax.bar(x+width/2, values, width, label='Intermediates only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
+    bottom_pos=bottom_pos+vmax(values)
+    bottom_neg=bottom_neg+vmin(values)
+    bcnt += 1
 
-values = data_df.emp_chg3
-bottom=which_bottom(bottom_pos,bottom_neg,values)
-ax.bar(x+width/2, values, width, label='RoW only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
-bottom_pos=bottom_pos+vmax(values)
-bottom_neg=bottom_neg+vmin(values)
-bcnt += 1
+    values = data_df.emp_chg_f
+    bottom=which_bottom(bottom_pos,bottom_neg,values)
+    ax.bar(x+width/2, values, width, label='Final goods only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
+    bottom_pos=bottom_pos+vmax(values)
+    bottom_neg=bottom_neg+vmin(values)
+    bcnt += 1
 
-ax.set_xticks(x, data_df.scenario)
-ax.axhline(0.0,color='black',ls='-',lw=1)
-ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-ax.set_ylim(-2,3.4)
-ax.set_xlabel('targeted sector')
-ax.set_ylabel('percent change in total goods emp')
-fig.tight_layout()    
-plt.savefig('output/fig_lr_emp_across_scenarios_compare.pdf')
-plt.clf()
-
-# compare emp vs gdp
-fig,ax=create_fig()    
-ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Goods employment')
-ax.bar(x+width/2, data_df.gdp_chg, width, color=colors[0], alpha=0.99, edgecolor='black', lw=1, label='Real GDP')
-ax.set_xticks(x, data_df.scenario)
-ax.axhline(0.0,color='black',ls='-',lw=1)
-ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-ax.set_ylim(-2,3.4)
-ax.set_xlabel('targeted sector')
-ax.set_ylabel('percent change')
-fig.tight_layout()    
-plt.savefig('output/fig_lr_emp_vs_gdp.pdf')
-plt.clf()
-
-
-# add stacked m vs f
-x = np.arange(len(scenarios))
-width=0.75/2
-
-fig,ax=create_fig()    
-ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Both')
-
-bottom_pos=np.zeros(len(scenarios))
-bottom_neg=np.zeros(len(scenarios))
-
-bcnt=0
-values = data_df.emp_chg_m
-bottom=which_bottom(bottom_pos,bottom_neg,values)
-ax.bar(x+width/2, values, width, label='Intermediates only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
-bottom_pos=bottom_pos+vmax(values)
-bottom_neg=bottom_neg+vmin(values)
-bcnt += 1
-
-values = data_df.emp_chg_f
-bottom=which_bottom(bottom_pos,bottom_neg,values)
-ax.bar(x+width/2, values, width, label='Final goods only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
-bottom_pos=bottom_pos+vmax(values)
-bottom_neg=bottom_neg+vmin(values)
-bcnt += 1
-
-ax.set_xticks(x, data_df.scenario)
-ax.axhline(0.0,color='black',ls='-',lw=1)
-ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-ax.set_ylim(-2,3.4)
-ax.set_xlabel('targeted sector')
-ax.set_ylabel('pct change in total goods emp')
-fig.tight_layout()    
-plt.savefig('output/fig_lr_emp_all_vs_m_vs_f.pdf')
-plt.clf()
+    ax.set_xticks(x, data_df.scenario)
+    ax.axhline(0.0,color='black',ls='-',lw=1)
+    ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+    ax.set_ylim(-2,3.4)
+    ax.set_xlabel('targeted sector')
+    ax.set_ylabel('pct change in total goods emp')
+    fig.tight_layout()    
+    savefig('fig_lr_emp_all_vs_m_vs_f')
+    plt.clf()
+else:
+    skipped('intermediates-only / final-only comparison')
 
 
 
@@ -580,11 +532,11 @@ def plot_lr_emp(df,fname):
     ax.set_ylabel('change in sectoral emp (percent total goods emp)')
     ax.set_ylim(-1.5,5.5)
     fig.tight_layout()    
-    plt.savefig('output/'+fname+'.pdf')
+    savefig(fname)
     plt.clf()
     
 
-for s in range(5):
+for s in [k for k in range(5) if df_all[k] is not None]:
     fname='fig_lr_goods_labor_s%d'%s
     plot_lr_emp(df_all[s],fname)
     
