@@ -7,7 +7,7 @@
 
 uint parse_args(int argc, char **argv)
 {
-  if(argc != 13 && argc != 15)
+  if(argc != 13 && argc != 15 && argc != 17)
     {
       fprintf(logfile,"Wrong number of command line arguments = %d!\n",argc);
       return 1;
@@ -18,7 +18,7 @@ uint parse_args(int argc, char **argv)
 
   fprintf(logfile,"Model scenario:\n");
   
-  while((opt = getopt(argc, argv, "t:s:c:r:d:a:p:")) != -1)
+  while((opt = getopt(argc, argv, "t:s:c:r:d:a:p:l:")) != -1)
     {
       switch(opt){
 
@@ -281,6 +281,11 @@ uint parse_args(int argc, char **argv)
 	    fprintf(logfile,"Invalid command-line option %d!\n",p);
 	    return 1;
 	  }
+	break;
+
+      case 'l':
+	fixl = atoi(optarg)==1 ? 1 : 0;
+	fprintf(logfile,"-Aggregate labor: %s\n", fixl ? "fixed at baseline" : "endogenous (GHH)");
 	break;
 
       default:
