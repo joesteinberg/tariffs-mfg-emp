@@ -800,9 +800,11 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 	  e->rva_t[t][i][s] = e->y_t[t][i][s];
 	  
 
+	  // Leontief: intermediate requirements scale with gross output VA/lam_va; the labor
+	  // adjustment cost is a loss of the sector's output (consistent with mpl_w)
 	  for(r=0; r<NS-1; r++)
 	    {
-	      e->md_t[t][i][s][r] = e->y_t[t][i][s]*p->lam[i][s][r];
+	      e->md_t[t][i][s][r] = (e->va_t[t][i][s]/p->lam_va[i][s])*p->lam[i][s][r];
 	      e->rva_t[t][i][s] -= e->md_t[t][i][s][r];
 	    }
 
