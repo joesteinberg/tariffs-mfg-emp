@@ -507,7 +507,11 @@ int main(int argc, char * argv[])
 #endif
   */
 
-  quant_exercise();
+  if(quant_exercise())
+    {
+      fprintf(logfile, "\nProgram failed!\n\n");
+      return 1;
+    }
 
   // ------------------------------------------------------------------------
 
