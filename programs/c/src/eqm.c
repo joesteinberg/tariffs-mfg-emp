@@ -650,6 +650,7 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 		}
 	    }
 	}
+      fprintf(file,",ngdp_prod,b,cagg,pc_exact,welfare");
       fprintf(file,"\n");
 
       for(t=0;t<(NT+1);t++)
@@ -725,6 +726,11 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 		    }
 		}
 	    }
+	  fprintf(file,",%0.16f",e->ngdp2_t[t][i]);
+	  fprintf(file,",%0.16f",e->b_t[t][i]);
+	  fprintf(file,",%0.16f",cagg(e->c_t[t][i],p->eps[i][0],p->rho));
+	  fprintf(file,",%0.16f",e->p_t[t][i][SVC]/dcagg(e->c_t[t][i],p->eps[i][0],p->rho,SVC));
+	  fprintf(file,",%0.16f",e->welfare_t[t][i]);
 	  fprintf(file,"\n");
 	}
       
@@ -1066,6 +1072,16 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 	    {
 	      e->rer_t[t][i][j] = 1.0;
 	    }
+	}
+
+      // Nominal GDP, expenditure side (= value added at basic prices + all tariff revenue):
+      // P^C C + P^I I + NX. The old production-side measure (gross output less intermediate
+      // purchases at pre-tariff prices, which omitted final-goods tariff revenue) is kept in ngdp2.
+      e->ngdp2_t[t][i] = e->ngdp_t[t][i];
+      e->ngdp_t[t][i] = e->pi_t[t][i]*e->ii_t[t][i] + SUM(e->nx_t[t][i],NC);
+      for(s=0; s<NS-1; s++)
+	{
+	  e->ngdp_t[t][i] += e->p_t[t][i][s]*e->c_t[t][i][s];
 	}
 
       e->iy_t[t][i] = e->pi_t[t][i]*e->ii_t[t][i]/e->ngdp_t[t][i];
