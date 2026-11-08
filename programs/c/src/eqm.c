@@ -879,24 +879,24 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
       // households' stochastic discount factor for dynamic firm's problem with adjustment costs
       if(t>0)
 	{
-	  double mutp = muc(
-			    e->c_t[t][i],
-			    e->ll_t[t][i],
-			    p->lbar[i],
-			    p->eps[i][0],
-			    p->rho,
-			    p->phi[i],
-			    p->psi,
-			    SVC);
-	  double mut = muc(
-			   e->c_t[t-1][i],
-			   e->ll_t[t-1][i],
-			   p->lbar[i],
-			   p->eps[i][0],
-			   p->rho,
-			   p->phi[i],
-			   p->psi,
-			   SVC);
+	  double mutp = muc_ghh(
+				e->c_t[t][i],
+				e->ll_t[t][i],
+				p->eps[i][0],
+				p->rho,
+				p->psiL[i],
+				p->frisch,
+				p->gam,
+				SVC);
+	  double mut = muc_ghh(
+			       e->c_t[t-1][i],
+			       e->ll_t[t-1][i],
+			       p->eps[i][0],
+			       p->rho,
+			       p->psiL[i],
+			       p->frisch,
+			       p->gam,
+			       SVC);
 	  
 	  e->Q_t[t-1][i] = p->beta[i] * (mutp / e->p_t[t][i][SVC]) / (mut / e->p_t[t-1][i][SVC]);
 	}
@@ -1589,32 +1589,17 @@ uint solve_eqm(int start_flag)
 void calc_welfare(eqm * e, const params * p)
 {
   int t, i;
+  // GHH lifetime utility: W_t = u(X_t) + beta * W_{t+1}, terminal steady state W_NT = u(X_NT)/(1-beta)
   for(i=0; i<NC; i++)
     {
       t=NT;
-      e->welfare_t[t][i] = (1.0/(1.0-p->beta[i]*pow(1.0,p->phi[i]*p->psi))) * 
-	(pow(p->eps[i][0][0] * pow(e->c_t[t][i][0],p->rho) +
-	     p->eps[i][0][1] * pow(e->c_t[t][i][1],p->rho) + 
-	     p->eps[i][0][2] * pow(e->c_t[t][i][2],p->rho) +
-	     p->eps[i][0][3] * pow(e->c_t[t][i][3],p->rho) +
-	     p->eps[i][0][4] * pow(e->c_t[t][i][4],p->rho),
-	     p->phi[i]*p->psi/p->rho) * 
-	 pow((p->lbar[i]-e->ll_t[t][i]),(1.0-p->phi[i])*p->psi));	
-      
+      double x = ghh_x(e->c_t[t][i],e->ll_t[t][i],p->eps[i][0],p->rho,p->psiL[i],p->frisch);
+      e->welfare_t[t][i] = (pow(x,1.0-p->gam)/(1.0-p->gam)) / (1.0-p->beta[i]);
       for(t=(NT-1); t>=0; t--)
 	{
-	  e->welfare_t[t][i] = p->beta[i] * e->welfare_t[t+1][i] + 
-	    (pow(p->eps[i][0][0] * pow(e->c_t[t][i][0],p->rho) +
-		 p->eps[i][0][1] * pow(e->c_t[t][i][1],p->rho) + 
-		 p->eps[i][0][2] * pow(e->c_t[t][i][2],p->rho) +
-		 p->eps[i][0][3] * pow(e->c_t[t][i][3],p->rho) +
-		 p->eps[i][0][4] * pow(e->c_t[t][i][4],p->rho),
-		 p->phi[i]*p->psi/p->rho) * 
-	    pow((p->lbar[i]-e->ll_t[t][i]),(1.0-p->phi[i])*p->psi));
-	  
-	  e->welfare_t[t+1][i] = pow(e->welfare_t[t+1][i],1.0/p->psi);
+	  x = ghh_x(e->c_t[t][i],e->ll_t[t][i],p->eps[i][0],p->rho,p->psiL[i],p->frisch);
+	  e->welfare_t[t][i] = pow(x,1.0-p->gam)/(1.0-p->gam) + p->beta[i] * e->welfare_t[t+1][i];
 	}
-      e->welfare_t[0][i] = pow(e->welfare_t[0][i],1.0/p->psi);
     }
 
   if(scenario == 0)

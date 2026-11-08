@@ -55,8 +55,13 @@ typedef struct
   
   // household preferences
   double beta[NC]; // discount factors
-  double psi; // intertemporal elasticity
-  double phi[NC]; // consumption share
+  double psi; // LEGACY (KRS Cobb-Douglas curvature); unused since GHH fix
+  double phi[NC]; // LEGACY; unused since GHH fix
+
+  // GHH preferences: u = [C - psiL*L^(1+1/frisch)/(1+1/frisch)]^(1-gam)/(1-gam)
+  double gam; // 1/IES
+  double frisch; // Frisch elasticity of labor supply
+  double psiL[NC]; // disutility weight on labor
 
   // endowments
   double lbar[NC];
@@ -216,6 +221,36 @@ static inline double prod_q(const double q2[NC], double H, const double theta[NC
   */
 }
 
+// ------------------------------------------------------------------------
+// GHH preferences (paper eq. 10):
+//   u = X^(1-gam)/(1-gam),  X = C - psiL * L^(1+1/frisch)/(1+1/frisch),
+//   C = [sum_s eps_s c_s^rho]^(1/rho)
+// ------------------------------------------------------------------------
+static inline double cagg(const double c[NS-1], const double eps[NS], double rho)
+{
+  return pow(DOT_PROD_EX(c,eps,NS-1,rho),1.0/rho);
+}
+
+// dC/dc_s
+static inline double dcagg(const double c[NS-1], const double eps[NS], double rho, uint s)
+{
+  return eps[s] * pow(c[s],rho-1.0) * pow(DOT_PROD_EX(c,eps,NS-1,rho),1.0/rho-1.0);
+}
+
+static inline double ghh_x(const double c[NS-1], double l, const double eps[NS], double rho, double psiL, double frisch)
+{
+  return cagg(c,eps,rho) - psiL * pow(l,1.0+1.0/frisch)/(1.0+1.0/frisch);
+}
+
+// du/dc_s
+static inline double muc_ghh(const double c[NS-1], double l, const double eps[NS], double rho,
+			     double psiL, double frisch, double gam, uint s)
+{
+  return pow(ghh_x(c,l,eps,rho,psiL,frisch),-gam) * dcagg(c,eps,rho,s);
+}
+
+// LEGACY KRS (Cobb-Douglas consumption-leisure) marginal utilities. NOT USED: with the
+// GHH calibration (phi=3, psi=-1) they implied u = -C^-3 (lbar-L)^2 in the Euler equation.
 // d u(c_up, c_dn, c_svcs, leis) / d c_s
 static inline double muc(const double c[NS-1], double l, double lbar, const double eps[NS], double rho, double phi, double psi, uint s)
 {

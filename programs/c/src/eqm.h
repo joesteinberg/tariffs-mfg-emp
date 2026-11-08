@@ -218,64 +218,40 @@ static inline double muc_mul(const params * p, const eqm * e, uint t, uint i)
 {
   if(fixl==1)
     {
-        return (e->ll_t[t][i] - p->lbar[i]/3.0);
+      return (e->ll_t[t][i] - p->ll0[i]);
     }
   else
     {
-      if(ghh_prefs)
-	{
-	  return e->ll_t[t][i] - p->lbar[i] * e->w_t[t][i]/p->phi[i];
-	}
-      else
-	{
-	  // MUC = lambda * P
-	  // MUL = lambda * W
-	  // MUC/P = MUL/W
-	  return 1000.0 * (
-			   muc
-			   (
-			    e->c_t[t][i],
-			    e->ll_t[t][i],
-			    p->lbar[i],
-			    p->eps[i][0],
-			    p->rho,
-			    p->phi[i],
-			    p->psi,
-			    2)/e->p_t[t][i][2] - 
-			   mul
-			   (
-			    e->c_t[t][i],
-			    e->ll_t[t][i],
-			    p->lbar[i],
-			    p->eps[i][0],
-			    p->rho,
-			    p->phi[i],
-			    p->psi)/e->w_t[t][i] );
-	}
+      // GHH labor supply: psiL * L^(1/frisch) = W / P^C, where the exact consumption
+      // price index is P^C = p_s / (dC/dc_s) (equal across s given mucs_mucr).
+      // Uses country i's own consumption prices (not the U.S. numeraire).
+      double real_w = e->w_t[t][i] * dcagg(e->c_t[t][i],p->eps[i][0],p->rho,SVC) / e->p_t[t][i][SVC];
+      return e->ll_t[t][i] - pow(real_w/p->psiL[i],p->frisch);
     }
 }
 
 static inline double euler(const params * p, const eqm * e, uint t, uint i)
 {
-  return 10000.0 * (e->pb_t[t] * muc(
-				     e->c_t[t][i],
-				     e->ll_t[t][i],
-				     p->lbar[i],
-				     p->eps[i][0],
-				     p->rho,
-				     p->phi[i],
-				     p->psi,
-				     SVC)
+  // Bond Euler: pb_t * u_c(t)/p(t) = beta * cpi^US(t+1) * u_c(t+1)/p(t+1), with GHH utility
+  return 10000.0 * (e->pb_t[t] * muc_ghh(
+					 e->c_t[t][i],
+					 e->ll_t[t][i],
+					 p->eps[i][0],
+					 p->rho,
+					 p->psiL[i],
+					 p->frisch,
+					 p->gam,
+					 SVC)
 		    - p->beta[i] * e->cpi_t[t+1][0] * (e->p_t[t][i][SVC]/e->p_t[t+1][i][SVC])
-		    * muc(
-			  e->c_t[t+1][i],
-			  e->ll_t[t+1][i],
-			  p->lbar[i],
-			  p->eps[i][0],
-			  p->rho,
-			  p->phi[i],
-			  p->psi,
-			  SVC));
+		    * muc_ghh(
+			      e->c_t[t+1][i],
+			      e->ll_t[t+1][i],
+			      p->eps[i][0],
+			      p->rho,
+			      p->psiL[i],
+			      p->frisch,
+			      p->gam,
+			      SVC));
 }
 
 static inline double bop(const params * p, const eqm * e, uint t, uint i)

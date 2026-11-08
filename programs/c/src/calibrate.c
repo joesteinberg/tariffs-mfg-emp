@@ -29,6 +29,9 @@ uint copy_params(params * dest, const params * src)
   dest->rss = src->rss;
   memcpy((double *)(dest->beta),(const double *)(src->beta),sizeof(double)*NC);
   dest->psi = src->psi;
+  dest->gam = src->gam;
+  dest->frisch = src->frisch;
+  memcpy((double *)(dest->psiL),(const double *)(src->psiL),sizeof(double)*NC);
   memcpy((double *)(dest->phi),(const double *)(src->phi),sizeof(double)*NC);
   memcpy((double *)(dest->lbar),(const double *)(src->lbar),sizeof(double)*NC);
   memcpy((double *)(dest->kk0),(const double *)(src->kk0),sizeof(double)*NC);
@@ -114,7 +117,9 @@ uint set_nontargeted_params(params * p)
     {
       p->rho = 1.0-1.0/0.65;
     }
-  p->psi = -1.0;
+  p->psi = -1.0; // LEGACY, unused
+  p->gam = 2.0; // IES = 0.5
+  p->frisch = 1.0;
 
   SET_ALL_V(p->r0,NC,p->rss);
   SET_ALL_V(p->tauk,NC,0.25);
@@ -798,8 +803,8 @@ uint calibrate_fin_params(params * p)
 
 	  for(s=0; s<(NS-2); s++)
 	    {
-	      tmp = muc(p->c0[i],p->ll0[i],p->lbar[i],p->eps[i][0],p->rho, p->phi[i], p->psi, s) /
-	      muc(p->c0[i],p->ll0[i],p->lbar[i],p->eps[i][0],p->rho, p->phi[i], p->psi, NS-2) - 1.0;
+	      tmp = dcagg(p->c0[i],p->eps[i][0],p->rho,s) /
+	      dcagg(p->c0[i],p->eps[i][0],p->rho,NS-2) - 1.0;
 	      if(fabs(tmp)>TINY)
 		{
 		  fprintf(logfile,"HH intratemp FOC 1 for country %d, sector %d, error = %f",i,s,tmp);
@@ -841,17 +846,26 @@ uint calibrate_hh_params(params * p)
       //p->eps[i][0][0] = tmp/(1.0+tmp);
       //p->eps[i][0][1] = 1.0 - p->eps[i][0][0];
 
-      p->lbar[i] = 3.0 * p->ll0[i];
-      p->phi[i] = 3.0;      
+      p->lbar[i] = 3.0 * p->ll0[i]; // LEGACY, unused
+      p->phi[i] = 3.0; // LEGACY, unused
 
       for(s=0; s<NS-1; s++) // we don't do this for construction!
 	{
 	  tmp1[s] = p->c0[i][s];
 	}
-      // note: beta = (1.0+rss)/gbgp^(phi*psi-1) > 1
-      // but, as long as beta*gbgp^(phi*psi) < 1, we can calculate welfare just fine
-      p->beta[i] = muc(p->c0[i],p->ll0[i],p->lbar[i],p->eps[i][0],p->rho, p->phi[i], p->psi, 0) /
-	muc(tmp1,p->ll0[i],p->lbar[i],p->eps[i][0],p->rho, p->phi[i], p->psi, 0) / (1.0 + p->rss);
+
+      // GHH labor weight: base-period prices and wages are 1, so
+      // psiL * L0^(1/frisch) = W0 * (dC/dc_s)/p_s = dC/dc_s at c0
+      p->psiL[i] = dcagg(tmp1,p->eps[i][0],p->rho,SVC) / pow(p->ll0[i],1.0/p->frisch);
+
+      if(ghh_x(tmp1,p->ll0[i],p->eps[i][0],p->rho,p->psiL[i],p->frisch) <= 0.0)
+	{
+	  fprintf(logfile,"GHH composite nonpositive at calibration for country %d\n",i);
+	  return 1;
+	}
+
+      // steady state with constant consumption: beta = 1/(1+r)
+      p->beta[i] = 1.0 / (1.0 + p->rss);
     }
 
   return 0;
@@ -929,7 +943,8 @@ uint write_params()
       fprintf(file,"rho: %0.4f\n",p->rho);
       fprintf(file,"delta: %0.4f\n",p->delta);
       fprintf(file,"rss: %0.4f\n",p->rss);
-      fprintf(file,"psi: %0.4f\n",p->psi);
+      fprintf(file,"gam: %0.4f\n",p->gam);
+      fprintf(file,"frisch: %0.4f\n",p->frisch);
 
       fprintf(file,"\nVECTOR PARAMETERS (1 x NC):\n");
 
@@ -939,8 +954,8 @@ uint write_params()
       fprintf(file,"beta:");
       fprintf_vec(file,p->beta,NC);
 
-      fprintf(file,"phi:");
-      fprintf_vec(file,p->phi,NC);
+      fprintf(file,"psiL:");
+      fprintf_vec(file,p->psiL,NC);
 
       fprintf(file,"lbar:");
       fprintf_vec(file,p->lbar,NC);
