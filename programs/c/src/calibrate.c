@@ -201,7 +201,29 @@ void load_ts_params(params * p)
 }
 
 
+static void scale_tariffs(params * p)
+{
+  if(tariff_scale==1.0)
+    return;
+  double * m = (double *)(p->tau_m_ts);
+  double * f = (double *)(p->tau_f_ts);
+  uint k;
+  for(k=0; k<(NT+1)*NC*NS*NC; k++)
+    {
+      m[k] *= tariff_scale;
+      f[k] *= tariff_scale;
+    }
+}
+
+static void set_tariffs_(params * p, uint scenario);
+
 void set_tariffs(params * p, uint scenario)
+{
+  set_tariffs_(p,scenario);
+  scale_tariffs(p);
+}
+
+static void set_tariffs_(params * p, uint scenario)
 {
   SET_ALL_V(p->tau_m_ts,(NT+1)*NC*NS*NC,0.0);
   SET_ALL_V(p->tau_f_ts,(NT+1)*NC*NS*NC,0.0);

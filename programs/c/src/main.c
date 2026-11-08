@@ -412,8 +412,25 @@ int quant_exercise()
   fprintf(logfile,"\nSolving for equilibrium with tariffs...\n");
   if(solve_eqm(0))
     {
-      fprintf(logfile, "\nProgram failed!\n");
-      return 1;
+      // Continuation: if the full shock cannot be solved from the no-tariff guess, phase the
+      // tariffs in over NSTEP steps, starting each solve from the previous step's solution.
+      const int NSTEP = 4;
+      int k;
+      for(k=1; k<=NSTEP; k++)
+	{
+	  tariff_scale = (double)k/NSTEP;
+	  for(it=0; it<NTH; it++)
+	    {
+	      set_tariffs(&(ppp1[it]),scenario);
+	    }
+	  fprintf(logfile,"\nRetrying with continuation: tariffs scaled by %0.2f...\n",tariff_scale);
+	  if(solve_eqm(k>1))
+	    {
+	      fprintf(logfile, "\nProgram failed!\n");
+	      return 1;
+	    }
+	}
+      tariff_scale = 1.0;
     }
 
   if(duration_flag_==1)
@@ -472,6 +489,7 @@ int main(int argc, char * argv[])
   k_adj_cost=0;
   l_adj_cost=0;
   tariff_policy_flag=0;
+  tariff_scale=1.0;
   fixl=1; // baseline: aggregate labor fixed at its calibrated level; -l 0 for endogenous GHH labor
   ghh_prefs=1;
   eval_eqm_once_flag=0;

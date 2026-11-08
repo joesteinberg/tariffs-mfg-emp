@@ -149,6 +149,10 @@ uint find_root_deriv_mkl(gsl_multiroot_function_fdf * f)
 
       if(status == GSL_CONTINUE)
 	{
+	  // stall detection: give up if the largest residual has not fallen by at least 1%
+	  // over the last 15 iterations (lets callers fall back to continuation quickly)
+	  double best_res = GSL_POSINF;
+	  uint since_best = 0;
 	  do
 	    {
 	      iter++;
@@ -185,6 +189,22 @@ uint find_root_deriv_mkl(gsl_multiroot_function_fdf * f)
 	      else
 		{
 		  status = GSL_CONTINUE;
+		}
+
+	      if(status != GSL_SUCCESS)
+		{
+		  double res = GSL_MAX(fabs(fmax),fabs(fmin));
+		  if(res < 0.99*best_res)
+		    {
+		      best_res = res;
+		      since_best = 0;
+		    }
+		  else if(++since_best >= 15)
+		    {
+		      status = GSL_ENOPROG;
+		      fprintf(logfile,"\t\tNo progress in 15 iterations; stopping.\n");
+		      break;
+		    }
 		}
 
 	      if(status != GSL_SUCCESS && gsl_vector_max(s->dx) < 1.0e-14 && gsl_vector_min(s->dx) > -1.0e-14)

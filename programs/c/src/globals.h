@@ -73,6 +73,7 @@ uint par;
 uint ghh_prefs;
 uint eval_calfn_once;
 double tariff;
+double tariff_scale; // scales all tariffs in set_tariffs (1 = full policy); used for continuation
 int TSHOCK;
 
 static inline void set_all_v(double * v, uint n, double x)
