@@ -490,9 +490,16 @@ uint store_base_period_values(params * p)
 	}
     }
 
-  p->b0[0] = 100*usa_nfa_usdmm/usa_gdp_usdmm;
-  p->b0[1] = 100*chn_nfa_usdmm/usa_gdp_usdmm;
-  p->b0[2] = -sum(p->b0,2);
+  // Initial bond holdings. The model's pre-tariff equilibrium is a steady state in which each
+  // country's 2020 trade balance persists forever, financed by income on its asset position:
+  //   NX0 + r/(1+r) * b0 = 0  =>  b0 = -NX0 (1+r)/r.
+  // This implies a counterfactual U.S. position (~ +155% of GDP, vs. measured NIIP of -74% using the
+  // IMF values in store_base_period_values: -19.85T NIIP / 27T GDP);
+  // b0 is interpreted as capitalized net income flows ("dark matter"/exorbitant privilege),
+  // not measured NIIP. The IMF-based values below are NOT used (overwritten); kept for reference.
+  // p->b0[0] = 100*usa_nfa_usdmm/usa_gdp_usdmm;
+  // p->b0[1] = 100*chn_nfa_usdmm/usa_gdp_usdmm;
+  // p->b0[2] = -sum(p->b0,2);
 
   double xx = (1.0+p->rss)/p->rss;
   p->b0[0] = -SUM(p->nx0[0],NC) * xx;
