@@ -606,23 +606,25 @@ uint set_initial_eqm_guess()
 uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 {
   char fname2[128];
+  // baseline closure (fixed aggregate labor) has no suffix; endogenous GHH labor gets "_ghh"
+  const char * lsuf = fixl ? "" : "_ghh";
 
   if(scenario==1)
     {
       if(tariff_policy_flag==1)
 	{
-	  sprintf(fname2,"output/%s_trump2025_r%d_d%d_a%d.csv",
-		  fname,retaliation_flag,duration_flag,adjustment_flag);
+	  sprintf(fname2,"output/%s_trump2025_r%d_d%d_a%d%s.csv",
+		  fname,retaliation_flag,duration_flag,adjustment_flag,lsuf);
 	}
       else
 	{
-	  sprintf(fname2,"output/%s_t%d_s%d_c%d_r%d_d%d_a%d.csv",
-		  fname,(int)(tariff*100),target_sector_flag,target_country_flag,retaliation_flag,duration_flag,adjustment_flag);
+	  sprintf(fname2,"output/%s_t%d_s%d_c%d_r%d_d%d_a%d%s.csv",
+		  fname,(int)(tariff*100),target_sector_flag,target_country_flag,retaliation_flag,duration_flag,adjustment_flag,lsuf);
 	}
     }
   else
     {
-      sprintf(fname2,"output/%s_a%d.csv",fname,adjustment_flag);
+      sprintf(fname2,"output/%s_a%d%s.csv",fname,adjustment_flag,lsuf);
     }
 
 

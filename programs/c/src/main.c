@@ -285,7 +285,7 @@ uint parse_args(int argc, char **argv)
 
       case 'l':
 	fixl = atoi(optarg)==1 ? 1 : 0;
-	fprintf(logfile,"-Aggregate labor: %s\n", fixl ? "fixed at baseline" : "endogenous (GHH)");
+	fprintf(logfile,"-Aggregate labor: %s\n", fixl ? "fixed at baseline" : "endogenous (GHH), output suffix _ghh");
 	break;
 
       default:
@@ -472,7 +472,7 @@ int main(int argc, char * argv[])
   k_adj_cost=0;
   l_adj_cost=0;
   tariff_policy_flag=0;
-  fixl=0;
+  fixl=1; // baseline: aggregate labor fixed at its calibrated level; -l 0 for endogenous GHH labor
   ghh_prefs=1;
   eval_eqm_once_flag=0;
   eval_bgp_once_flag=0;
