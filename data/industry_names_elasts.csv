@@ -10,7 +10,7 @@ C16,11.5,Wood products
 C17_18,16.52,Paper products
 C19,64.85,Refined petroleum
 C20,3.13,Chemicals
-C21,3.13,Pharmateuticals
+C21,3.13,Pharmaceuticals
 C22,1.67,Rubber + plastics
 C23,2.41,Minerals
 C24,3.28,Basic metals
@@ -30,7 +30,7 @@ H50,,Water transport
 H51,,Air transport
 H52,,Transport logistics
 H53,,Postal + courier services
-I,,Accomodates + food services
+I,,Accommodation + food services
 J58T60,,Publishing + broadcasting
 J61,,Telecommunications
 J62_63,,Information services

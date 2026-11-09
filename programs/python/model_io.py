@@ -8,12 +8,15 @@ Command-line options (parsed by both scripts):
   --pz lo|hi    use the sourcing-friction sensitivity runs solved with -z lo or -z hi (files with
                 the _phiZ_lo / _phiZ_hi suffix; PHIZ below); outputs get the same suffix. A number
                 instead selects a run solved with -z <number> (suffix _pz<number>). Combines with --ghh.
+  --sig NAME    use the runs solved with the long-run elasticity vector -e NAME (cp, krs, half, u2,
+                umean, u5; see the C code's globals.h), files with the _sig_NAME suffix; outputs get
+                the same suffix. Combines with --ghh and --pz.
   --partial     allow expected model runs to be missing. Only into a fresh --out directory: the
                 skipped inputs and outputs are listed in PARTIAL_MANIFEST.txt there, so a partial
                 set can never sit next to stale figures/tables from an earlier complete run.
 
 Without --partial, every expected run must be present (all scenarios for the baseline; the
-headline set SENS_RUNS with --ghh or --pz), otherwise the scripts stop before writing anything.
+headline set SENS_RUNS with --ghh, --pz or --sig), otherwise the scripts stop before writing anything.
 Model output must come from the revised C code: files lacking REQUIRED_COLS (written before the
 GDP/consumption/NFA columns were added) are rejected rather than reinterpreted.
 """
@@ -30,7 +33,7 @@ SCEN_CODES = [0, 1, 3, 4, 6]          # -s codes for the five single/all-goods p
 # production side and have no CES consumption aggregate, so they are not comparable.
 REQUIRED_COLS = ['ngdp_prod', 'b', 'cagg', 'pc_exact', 'welfare']
 
-# Runs that make up each sensitivity set (GHH labor, alternative phi_Z): the five single/all-goods
+# Runs that make up each sensitivity set (GHH labor, alternative phi_Z, elasticity vectors): the five single/all-goods
 # policies and the 2025 schedule. Keys as in load_results/_trump2025.
 SENS_RUNS = {(25, s, 2, 0, 0, 4) for s in SCEN_CODES} | {('trump2025', 0, 0, 4)}
 
@@ -44,10 +47,11 @@ def parse_args():
     ap.add_argument('--out', default='output')
     ap.add_argument('--ghh', action='store_true')
     ap.add_argument('--pz', default=None, help='lo, hi, or a phi_Z value')
+    ap.add_argument('--sig', default=None, help='long-run elasticity vector (C option -e)')
     ap.add_argument('--partial', action='store_true')
     args = ap.parse_args()
-    args.suffix = suffix(args.ghh, args.pz)
-    args.sens = args.ghh or args.pz is not None
+    args.suffix = suffix(args.ghh, args.pz, args.sig)
+    args.sens = args.ghh or args.pz is not None or args.sig is not None
     os.makedirs(args.out, exist_ok=True)
     if args.partial:
         manifest = os.path.join(args.out, MANIFEST)
@@ -72,11 +76,12 @@ def phiz_value(pz=None):
     return PHIZ_BASE if pz is None else PHIZ[pz] if pz in PHIZ else float(pz)
 
 
-def suffix(ghh=False, pz=None):
-    """File-name suffix used by the C code: _ghh for GHH labor; _phiZ_lo / _phiZ_hi for -z lo / hi,
-    _pz<phi> (as "%g") for -z <number>."""
+def suffix(ghh=False, pz=None, sig=None):
+    """File-name suffix used by the C code, in its order: _ghh for GHH labor; _sig_<name> for -e
+    <name>; _phiZ_lo / _phiZ_hi for -z lo / hi, _pz<phi> (as "%g") for -z <number>."""
     sz = '' if pz is None else '_phiZ_' + pz if pz in PHIZ else '_pz%g' % float(pz)
-    return ('_ghh' if ghh else '') + sz
+    ss = '' if sig in (None, 'base') else '_sig_' + sig
+    return ('_ghh' if ghh else '') + ss + sz
 
 
 def _record(args, line):
@@ -186,3 +191,20 @@ def diff_pct_lg(df, variable):
 
 def pp_chg(df, variable):
     return (100 * (df[1][variable] - df[0][variable])).values
+
+
+def recovery_year(g):
+    """First year from which the path g (% change from baseline) stays above zero; nan if it ends at
+    or below zero."""
+    if g[-1] <= 0:
+        return np.nan
+    below = np.where(g <= 0)[0]
+    return 0 if len(below) == 0 else int(below.max() + 1)
+
+
+def conv_year(g):
+    """Years to converge to the long run: first t from which |g_t - g_LR| <= 10% of max_t |g_t - g_LR|
+    for all later t."""
+    dev = np.abs(g - g[-1])
+    outside = np.where(dev > 0.1 * dev.max())[0]
+    return 0 if len(outside) == 0 else int(outside.max() + 1)

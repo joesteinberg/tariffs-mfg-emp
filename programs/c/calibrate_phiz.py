@@ -11,12 +11,14 @@ tariff on all goods: every country taxes imports from every other country
 (The import-value elasticity `te` in a unilateral US tariff is not usable: it is dominated by the
 dollar's appreciation and barely moves with phi_Z.)
 
-usage: python3 calibrate_phiz.py --target 0.5 [--target 0.2] [--bin ./bin/model.bin] [--rundir .]
+usage: python3 calibrate_phiz.py --target 0.5 [--target 0.2] [--sig NAME] [--bin ./bin/model.bin] [--rundir .]
+  --sig NAME   solve with the long-run elasticity vector -e NAME (globals.h) and re-target phi_Z for it;
+               --target defaults to the baseline's elasticity (BASE_TARGET) when --sig is given
   --rundir must contain output/ and ../python/output/iomat.txt (as programs/c does).
 Each evaluation is one model solve, run with -z <phi>; its output files carry the suffix _pz<phi>.
-Evaluations are cached in <rundir>/output/phiz_calibration_ae.csv, so reruns and later targets reuse
+Evaluations are cached in <rundir>/output/phiz_calibration_ae[_sig_NAME].csv, so reruns and later targets reuse
 them. The values found for targets 1.0 and 0.2 are hard-coded as PHIZ_LO / PHIZ_HI (src/globals.h)
-and PHIZ (../python/model_io.py); the paper's sensitivity runs use -z lo / -z hi (run_all.sh). The search is a secant method on (log phi, log elasticity), stopping at |te - target| < tol.
+and PHIZ (../python/model_io.py); the paper's sensitivity runs use -z lo / -z hi (run_all.sh). The search is a secant method on (log phi, log elasticity), stopping at |elasticity - target| < tol (default 0.0005).
 """
 import argparse
 import csv
@@ -26,6 +28,7 @@ import subprocess
 
 BASE_ARGS = ['-t', '25', '-s', '6', '-c', '2', '-r', '2', '-d', '0', '-a', '4']
 STAT = 'ae'
+BASE_TARGET = 0.4811530373   # `ae` at baseline phi_Z = 2.9 and baseline elasticities
 
 
 def fmt(phi):
@@ -34,11 +37,11 @@ def fmt(phi):
 
 def run_model(phi, args):
     out = os.path.join(args.rundir, 'output')
-    log = os.path.join(out, 'log_phiz_%s.txt' % fmt(phi))
+    log = os.path.join(out, 'log_phiz%s_%s.txt' % (args.sfx, fmt(phi)))
     with open(log, 'w') as f:
-        rc = subprocess.run([args.bin] + BASE_ARGS + ['-z', fmt(phi)], cwd=args.rundir,
+        rc = subprocess.run([args.bin] + BASE_ARGS + args.eargs + ['-z', fmt(phi)], cwd=args.rundir,
                             stdout=f, stderr=subprocess.STDOUT).returncode
-    path = os.path.join(out, 'vars1_usa_t25_s6_c2_r2_d0_a4_pz%s.csv' % fmt(phi))
+    path = os.path.join(out, 'vars1_usa_t25_s6_c2_r2_d0_a4%s_pz%s.csv' % (args.sfx, fmt(phi)))
     if rc != 0 or not os.path.exists(path):
         raise SystemExit('model failed at phi_Z = %s (see %s)' % (fmt(phi), log))
     with open(path) as f:
@@ -96,14 +99,21 @@ def solve_target(target, cache, args, cache_path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--target', type=float, action='append', required=True)
+    ap.add_argument('--target', type=float, action='append')
+    ap.add_argument('--sig', default=None)
     ap.add_argument('--bin', default='./bin/model.bin')
     ap.add_argument('--rundir', default='.')
-    ap.add_argument('--tol', type=float, default=0.002)
+    ap.add_argument('--tol', type=float, default=0.0005)
     ap.add_argument('--maxit', type=int, default=10)
     args = ap.parse_args()
     args.bin = os.path.abspath(args.bin)
-    cache_path = os.path.join(args.rundir, 'output', 'phiz_calibration_%s.csv' % STAT)
+    args.eargs = [] if args.sig is None else ['-e', args.sig]
+    args.sfx = '' if args.sig is None else '_sig_' + args.sig
+    if args.target is None:
+        if args.sig is None:
+            ap.error('--target is required without --sig')
+        args.target = [BASE_TARGET]
+    cache_path = os.path.join(args.rundir, 'output', 'phiz_calibration_%s%s.csv' % (STAT, args.sfx))
     cache = load_cache(cache_path)
     results = [(t,) + solve_target(t, cache, args, cache_path) for t in args.target]
     print('\nresult:')

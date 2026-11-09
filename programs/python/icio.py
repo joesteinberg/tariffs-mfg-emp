@@ -248,6 +248,35 @@ wavg = lambda x: np.average(x,weights=trd.loc[x.index,'value'])
 e2 = trd.groupby(['row_sector3'])[['elast_CP']].agg(wavg).reset_index()
 print(e2.loc[~(e2.elast_CP.isnull()),:])
 
+# industry-level detail behind the cluster elasticities (appendix table): upstreamness (mean
+# across the three regions), Caliendo-Parro trade elasticity, and the weight of each industry in
+# its cluster's average = its 2020 trade between the three model regions (USA, CHN, ROW; intra-RoW
+# trade excluded), intermediate and final use combined, in current USD
+CLUSTER_NAME = {'UP-HI': 'Oil', 'UP-LO': 'Steel', 'DN-HI': 'Toys', 'DN-LO': 'Cars'}
+ind_trade = trd.groupby('row_sector')['value'].sum()
+ind_tab = scheme2[['row_sector', 'name', 'row_sector3', 'U', 'elast_CP']].copy()
+ind_tab['cluster'] = ind_tab.row_sector3.map(CLUSTER_NAME)
+ind_tab['trade_usdmm'] = ind_tab.row_sector.map(ind_trade)
+ind_tab['weight'] = ind_tab.trade_usdmm / ind_tab.groupby('cluster').trade_usdmm.transform('sum')
+ind_tab['cluster'] = pd.Categorical(ind_tab.cluster, ['Oil', 'Steel', 'Toys', 'Cars'])
+ind_tab = ind_tab.sort_values(['cluster', 'weight'], ascending=[True, False])
+ind_tab[['row_sector', 'name', 'cluster', 'U', 'elast_CP', 'trade_usdmm', 'weight']].round(
+    {'U': 4, 'elast_CP': 2, 'trade_usdmm': 1, 'weight': 4}).rename(
+    columns={'row_sector': 'icio_industry', 'U': 'upstreamness', 'elast_CP': 'theta_CP'}).to_csv(
+    'output/industry_elasts.csv', index=False)
+with open('output/industry_elasts.tex', 'w') as file:
+    file.write('\\begin{tabular}{llrrr}\n\\toprule\n')
+    file.write('Sector & Industry & Upstreamness & $\\theta^{CP}$ & Weight (\\%) \\\\\n')
+    for c in ['Oil', 'Steel', 'Toys', 'Cars']:
+        sub = ind_tab[ind_tab.cluster == c]
+        file.write('\\midrule\n')
+        for k, (_, r) in enumerate(sub.iterrows()):
+            file.write("%s & %s & %0.2f & %0.2f & %0.1f \\\\\n"
+                       % ("``%s''" % c if k == 0 else '', r['name'].replace('&', '\\&'), r.U, r.elast_CP, 100 * r.weight))
+        th = np.average(sub.elast_CP, weights=sub.trade_usdmm)
+        file.write('& \\textit{Trade-weighted average} & & \\textit{%0.2f} & \\\\\n' % th)
+    file.write('\\bottomrule\n\\end{tabular}\n')
+
 # merge the groups back on to the main dataset
 # UP-HI = OIL
 # UP-LO = STEEL

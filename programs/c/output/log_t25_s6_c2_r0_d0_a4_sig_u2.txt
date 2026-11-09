@@ -1,0 +1,54 @@
+
+----------------------------------------------------------------------
+
+Tariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions
+Joseph Steinberg, University of Toronto
+
+----------------------------------------------------------------------
+
+Setting up environment...
+
+Model scenario:
+-Tariff rate: 25pct
+-Targeted sector: All goods
+-Targeted country: China + rest of world
+-Retaliation: No
+-Duration: Permanent
+-Adjustment costs: Labor + capital + supply chains
+-Armington elasticities: u2 (intermediate 2/2/2/2, final 2/2/2/2)
+-Sourcing adjustment cost phi_Z = 2.488 (re-targeted for -e u2)
+
+Parallel processing using 128 OMP threads
+----------------------------------------------------------------------
+
+Solving for free-trade benchmark...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 3.10e-13, 22	min = -9.66e-13, 1
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 2.60387e-12
+
+	Initializing solver on 19554-variable system...
+		Initialization complete. Time = 7.00
+		1, 24 secs	max = 1.28e-11, 19551	min = -1.01e-11, 2993
+	Finished: success. Time = 34.00, iter = 1, sum |f| = 1.2246e-09
+
+Solving for equilibrium with tariffs...
+
+	Initializing solver on 19554-variable system...
+		Initialization complete. Time = 7.00
+		1, 23 secs	max = 2.27e-01, 19501	min = -1.31e-01, 1
+		2, 24 secs	max = 4.50e-03, 19306	min = -2.81e-03, 19373
+		3, 23 secs	max = 2.13e-06, 19365	min = -1.54e-06, 19371
+		4, 23 secs	max = 1.81e-10, 18916	min = -1.56e-10, 18721
+	Finished: success. Time = 103.00, iter = 4, sum |f| = 6.66126e-09
+Short run trade elasticities:
+Up-hi: 1.0483
+Up-lo: 1.0062
+Dn-hi: 0.9970
+Dn-lo: 1.0151
+
+----------------------------------------------------------------------
+
+Program complete!
+

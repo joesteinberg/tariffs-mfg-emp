@@ -129,19 +129,16 @@ uint set_nontargeted_params(params * p)
 
   // need to adjust these!
   int i;
+  // goods-sector Armington elasticities from the vector chosen with -e (globals.h); baseline
+  // (sig_vec = 0) is Oil 8, Steel 2, Toys 4, Cars 1.05 for both intermediate and final sourcing
   for(i=0; i<NC; i++)
     {
-      p->zeta[i][UPH] = 1.0-1.0/8.0;
-      p->sig[i][UPH] = 1.0-1.0/8.0;
-      
-      p->zeta[i][UPL] = 1.0-1.0/2.0;
-      p->sig[i][UPL] = 1.0-1.0/2.0;
-
-      p->zeta[i][DNH] = 1.0-1.0/4.0;
-      p->sig[i][DNH] = 1.0-1.0/4.0;
-
-      p->zeta[i][DNL] = 1.0-1.0/1.05;
-      p->sig[i][DNL] = 1.0-1.0/1.05;
+      uint s;
+      for(s=0; s<4; s++)
+	{
+	  p->zeta[i][s] = 1.0-1.0/SIG_INT[sig_vec][s];
+	  p->sig[i][s] = 1.0-1.0/SIG_FIN[sig_vec][s];
+	}
 
       p->zeta[i][SVC] = 1.0-1.0/1.05;
       p->sig[i][SVC] = 1.0-1.0/1.05;

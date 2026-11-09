@@ -40,3 +40,14 @@ for z in lo hi; do
     done
     ./bin/model.bin -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1 -z $z > output/log_trump2025_r0_d0_a4_phiZ_${z}.txt
 done
+
+# Long-run Armington elasticity sensitivity (appendix): vectors in src/globals.h, each with phi_Z
+# re-targeted (calibrate_phiz.py --sig NAME) to the baseline short-run elasticity; outputs carry
+# _sig_NAME. The symmetric run is the calibration experiment.
+for e in cp krs half u2 umean u5; do
+    ./bin/model.bin -t 25 -s 6 -c 2 -r 2 -d 0 -a 4 -e $e > output/log_t25_s6_c2_r2_d0_a4_sig_${e}.txt
+    for s in 0 1 3 4 6; do
+	./bin/model.bin -t 25 -s $s -c 2 -r 0 -d 0 -a 4 -e $e > output/log_t25_s${s}_c2_r0_d0_a4_sig_${e}.txt
+    done
+    ./bin/model.bin -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1 -e $e > output/log_trump2025_r0_d0_a4_sig_${e}.txt
+done

@@ -41,7 +41,7 @@ def which_bottom(bottom_p, bottom_n, data):
 
 
 ##########################################################################
-# load the results (see model_io.py for options: --cdir, --out, --ghh, --pz, --partial)
+# load the results (see model_io.py for options: --cdir, --out, --ghh, --pz, --sig, --partial)
 
 import os
 from model_io import (parse_args, load_results, load_results_trump2025, have, check_inputs,
@@ -133,6 +133,23 @@ def place_legend(fig, ax, ncl):
         hi = hi + 0.1*(hi - lo)
         ax.set_ylim(lo, hi)
 
+def fit_ylim(ax, lo, hi):
+    """Set the y-range (lo, hi), which is tuned to the baseline results. Sensitivity results
+    (args.sens) can fall outside it; there the range is widened to cover every line and bar,
+    with a margin, so that nothing is clipped. Baseline figures are unaffected."""
+    if args.sens:
+        ys = [np.asarray(l.get_ydata(), dtype=float) for l in ax.get_lines()]
+        ys += [np.array([p.get_y(), p.get_y() + p.get_height()]) for p in ax.patches]
+        ys = [v[np.isfinite(v)] for v in ys]
+        if ys and sum(v.size for v in ys):
+            y = np.concatenate(ys)
+            pad = 0.08 * (max(hi, y.max()) - min(lo, y.min()))
+            if y.min() < lo:
+                lo = y.min() - pad
+            if y.max() > hi:
+                hi = y.max() + pad
+    ax.set_ylim(lo, hi)
+
 def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.25),noxlab=False,ncl=1):
 
     maxT=51
@@ -163,7 +180,7 @@ def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.2
         #ax.set_xticks(xticks, labels=xlabels)
         
     if ylim !=None:
-        ax.set_ylim(ylim)
+        fit_ylim(ax, *ylim)
 
     if(noxlab==False):
         ax.set_xlabel('period')
@@ -402,7 +419,7 @@ if have(df_all):
     fig,ax=create_fig()
     ax.bar(data_df.scenario, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1)
     ax.axhline(0.0,color='black',ls='-',lw=0.5)
-    ax.set_ylim(-3,6)
+    fit_ylim(ax, -3, 6)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent chg in goods emp')
     fig.tight_layout()    
@@ -431,7 +448,7 @@ if have(df_all):
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
     ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    ax.set_ylim(-3,6)
+    fit_ylim(ax, -3, 6)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('change (percent total goods emp)')
     fig.tight_layout()    
@@ -445,7 +462,7 @@ if have(df_all, df_chn, df_row):
     fig,ax=create_fig()    
     ax.bar(data_df.scenario, data_df.emp_chg2, width, color='black', alpha=0.99, edgecolor='black', lw=1)
     ax.axhline(0.0,color='black',ls='-',lw=0.5)
-    ax.set_ylim(-2.5,3.5)
+    fit_ylim(ax, -2.5, 3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent chg in total goods emp')
     fig.tight_layout()    
@@ -456,7 +473,7 @@ if have(df_all, df_chn, df_row):
     fig,ax=create_fig()    
     ax.bar(data_df.scenario, data_df.emp_chg3, width, color='black', alpha=0.99, edgecolor='black', lw=1)
     ax.axhline(0.0,color='black',ls='-',lw=0.5)
-    ax.set_ylim(-2.5,3.5)
+    fit_ylim(ax, -2.5, 3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent chg in total goods emp')
     fig.tight_layout()    
@@ -491,7 +508,7 @@ if have(df_all, df_chn, df_row):
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
     ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    ax.set_ylim(-2.5,3.5)
+    fit_ylim(ax, -2.5, 3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent change in total goods emp')
     fig.tight_layout()    
@@ -508,7 +525,7 @@ if have(df_all):
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
     ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    ax.set_ylim(-2.5,3.5)
+    fit_ylim(ax, -2.5, 3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent change')
     fig.tight_layout()    
@@ -546,7 +563,7 @@ if have(df_all, df_m, df_f):
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
     ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    ax.set_ylim(-2.5,3.5)
+    fit_ylim(ax, -2.5, 3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('pct change in total goods emp')
     fig.tight_layout()    
@@ -571,7 +588,7 @@ def plot_lr_emp(df,fname):
     ax.axhline(0.0,color='black',ls='-',lw=0.5)
     ax.set_xlabel('Sector')
     ax.set_ylabel('change in sectoral emp (percent total goods emp)')
-    ax.set_ylim(-2.5,5.5)
+    fit_ylim(ax, -2.5, 5.5)
     fig.tight_layout()    
     savefig(fname)
     plt.clf()

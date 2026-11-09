@@ -607,9 +607,10 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 {
   char fname2[160];
   // baseline closure (fixed aggregate labor, phi_Z = 2.9) has no suffix; endogenous GHH labor
-  // adds "_ghh" and a non-default sourcing cost (-z) adds "_phiZ_lo", "_phiZ_hi" or "_pz<value>"
-  char lsuf[48];
-  snprintf(lsuf,sizeof(lsuf),"%s%s",fixl ? "" : "_ghh",phiz_suf);
+  // adds "_ghh", an elasticity vector (-e) adds "_sig_<name>", and an explicit sourcing cost (-z)
+  // adds "_phiZ_lo", "_phiZ_hi" or "_pz<value>"
+  char lsuf[96];
+  snprintf(lsuf,sizeof(lsuf),"%s%s%s",fixl ? "" : "_ghh",sig_suf,phiz_suf);
 
   if(scenario==1)
     {

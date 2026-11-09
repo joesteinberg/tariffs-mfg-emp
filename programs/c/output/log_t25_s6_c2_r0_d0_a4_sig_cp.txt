@@ -1,0 +1,57 @@
+
+----------------------------------------------------------------------
+
+Tariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions
+Joseph Steinberg, University of Toronto
+
+----------------------------------------------------------------------
+
+Setting up environment...
+
+Model scenario:
+-Tariff rate: 25pct
+-Targeted sector: All goods
+-Targeted country: China + rest of world
+-Retaliation: No
+-Duration: Permanent
+-Adjustment costs: Labor + capital + supply chains
+-Armington elasticities: cp (intermediate 18.62/3.85/12.88/3.17, final 18.62/3.85/12.88/3.17)
+-Sourcing adjustment cost phi_Z = 4.74 (re-targeted for -e cp)
+
+Parallel processing using 128 OMP threads
+----------------------------------------------------------------------
+
+Solving for free-trade benchmark...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 6.82e-13, 68	min = -5.40e-13, 1
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 2.08167e-12
+
+	Initializing solver on 19554-variable system...
+		Initialization complete. Time = 7.00
+		1, 23 secs	max = 7.39e-12, 5138	min = -8.90e-12, 4163
+	Finished: success. Time = 33.00, iter = 1, sum |f| = 1.25408e-09
+
+Solving for equilibrium with tariffs...
+
+	Initializing solver on 19554-variable system...
+		Initialization complete. Time = 6.00
+		1, 24 secs	max = 3.65e+00, 19501	min = -1.28e+00, 19506
+		2, 23 secs	max = 6.02e-01, 19365	min = -4.34e-01, 19371
+		3, 23 secs	max = 2.85e-01, 19365	min = -2.01e-01, 19371
+		4, 24 secs	max = 2.79e-02, 19365	min = -2.03e-02, 19371
+		5, 23 secs	max = 3.59e-04, 19365	min = -2.61e-04, 19371
+		6, 23 secs	max = 7.33e-08, 19365	min = -5.40e-08, 19551
+		7, 24 secs	max = 5.12e-12, 18721	min = -4.95e-12, 14236
+	Finished: success. Time = 173.00, iter = 7, sum |f| = 3.85118e-10
+Short run trade elasticities:
+Up-hi: 1.0882
+Up-lo: 0.9611
+Dn-hi: 0.9819
+Dn-lo: 0.9635
+
+----------------------------------------------------------------------
+
+Program complete!
+

@@ -21,7 +21,7 @@ import argparse
 import os
 import numpy as np
 import pandas as pd
-from model_io import _load_pair, suffix, phiz_value, PHIZ_BASE
+from model_io import _load_pair, suffix, phiz_value, PHIZ_BASE, recovery_year, conv_year
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--cdir', default='../c/output')
@@ -51,20 +51,6 @@ def load(exp, pz):
     if df is None:
         raise SystemExit('phiz_table.py: missing %s or %s' % (base, cf))
     return df
-
-
-def recovery_year(g):
-    if g[-1] <= 0:
-        return np.nan
-    below = np.where(g <= 0)[0]
-    return 0 if len(below) == 0 else int(below.max() + 1)
-
-
-def conv_year(g):
-    dev = np.abs(g - g[-1])
-    band = 0.1 * dev.max()
-    outside = np.where(dev > band)[0]
-    return 0 if len(outside) == 0 else int(outside.max() + 1)
 
 
 rows = []

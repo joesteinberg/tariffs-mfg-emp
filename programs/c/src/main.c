@@ -7,7 +7,7 @@
 
 uint parse_args(int argc, char **argv)
 {
-  if(argc != 13 && argc != 15 && argc != 17 && argc != 19)
+  if(argc < 13 || argc > 23 || argc % 2 == 0)
     {
       fprintf(logfile,"Wrong number of command line arguments = %d!\n",argc);
       return 1;
@@ -18,7 +18,7 @@ uint parse_args(int argc, char **argv)
 
   fprintf(logfile,"Model scenario:\n");
   
-  while((opt = getopt(argc, argv, "t:s:c:r:d:a:p:l:z:")) != -1)
+  while((opt = getopt(argc, argv, "t:s:c:r:d:a:p:l:z:e:")) != -1)
     {
       switch(opt){
 
@@ -317,13 +317,51 @@ uint parse_args(int argc, char **argv)
 	      }
 	    snprintf(phiz_suf,sizeof(phiz_suf),"_pz%g",phiz);
 	  }
+	phiz_given=1;
 	fprintf(logfile,"-Sourcing adjustment cost phi_Z = %g, output suffix %s\n",phiz,phiz_suf);
+	break;
+
+      case 'e':
+	{
+	  uint v, found=0;
+	  for(v=0; v<NSIGV; v++)
+	    {
+	      if(strcmp(optarg,SIG_NAMES[v])==0)
+		{
+		  sig_vec=v;
+		  found=1;
+		}
+	    }
+	  if(!found)
+	    {
+	      fprintf(logfile,"Invalid elasticity vector -e %s!\n",optarg);
+	      return 1;
+	    }
+	  if(sig_vec>0)
+	    snprintf(sig_suf,sizeof(sig_suf),"_sig_%s",SIG_NAMES[sig_vec]);
+	  fprintf(logfile,"-Armington elasticities: %s (intermediate %g/%g/%g/%g, final %g/%g/%g/%g)\n",
+		  SIG_NAMES[sig_vec],
+		  SIG_INT[sig_vec][0],SIG_INT[sig_vec][1],SIG_INT[sig_vec][2],SIG_INT[sig_vec][3],
+		  SIG_FIN[sig_vec][0],SIG_FIN[sig_vec][1],SIG_FIN[sig_vec][2],SIG_FIN[sig_vec][3]);
+	}
 	break;
 
       default:
 	fprintf(logfile,"Invalid command-line option!\n");
 	return 1;      
       }
+    }
+
+  // an elasticity vector carries its own re-targeted phi_Z unless -z overrides it
+  if(sig_vec>0 && !phiz_given)
+    {
+      if(!(SIG_PHIZ[sig_vec]>0.0))
+	{
+	  fprintf(logfile,"phi_Z not yet calibrated for -e %s; give -z!\n",SIG_NAMES[sig_vec]);
+	  return 1;
+	}
+      phiz = SIG_PHIZ[sig_vec];
+      fprintf(logfile,"-Sourcing adjustment cost phi_Z = %g (re-targeted for -e %s)\n",phiz,SIG_NAMES[sig_vec]);
     }
 
   return 0;
@@ -532,6 +570,9 @@ int main(int argc, char * argv[])
   tariff_scale=1.0;
   phiz=2.9;
   phiz_suf[0]='\0';
+  phiz_given=0;
+  sig_vec=0;
+  sig_suf[0]='\0';
   fixl=1; // baseline: aggregate labor fixed at its calibrated level; -l 0 for endogenous GHH labor
   ghh_prefs=1;
   eval_eqm_once_flag=0;

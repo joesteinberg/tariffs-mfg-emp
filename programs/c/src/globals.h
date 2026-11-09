@@ -80,6 +80,39 @@ char phiz_suf[32]; // output-name suffix when -z is given: "_phiZ_lo", "_phiZ_hi
 // The baseline 2.9 gives 0.48. Keep in sync with PHIZ in programs/python/model_io.py.
 #define PHIZ_LO 0.6585
 #define PHIZ_HI 12.44
+
+// Long-run Armington elasticity vectors (-e NAME), by goods sector (Oil = UPH, Steel = UPL,
+// Toys = DNH, Cars = DNL) for intermediate (zeta) and final (sig) sourcing; services stay at 1.05.
+// Output suffix "_sig_<name>". SIG_PHIZ is phi_Z re-targeted (calibrate_phiz.py --sig NAME) so the
+// impact Armington elasticity in the symmetric experiment equals the baseline's 0.4812; 0 means not
+// yet calibrated, in which case -z must be given.
+//   cp:    Caliendo-Parro (2015) theta + 1, trade-weighted by cluster (icio.py)
+//   krs:   Kehoe-Ruhl-Steinberg (2018): 3 for intermediates, 2 for final goods, every sector
+//   half:  baseline with half the dispersion: sbar*(s/sbar)^0.5, rescaled to the baseline
+//          trade-weighted mean sbar = 3.25 (weights as in the `ae` statistic)
+//   u2, umean, u5: the same elasticity in every goods sector: 2, 3.25 (= sbar), 5
+#define NSIGV 7
+static const char * const SIG_NAMES[NSIGV] = {"base","cp","krs","half","u2","umean","u5"};
+static const double SIG_INT[NSIGV][4] = {
+  {8.0, 2.0, 4.0, 1.05},
+  {18.62, 3.85, 12.88, 3.17},
+  {3.0, 3.0, 3.0, 3.0},
+  {5.50, 2.75, 3.89, 1.99},
+  {2.0, 2.0, 2.0, 2.0},
+  {3.25, 3.25, 3.25, 3.25},
+  {5.0, 5.0, 5.0, 5.0}};
+static const double SIG_FIN[NSIGV][4] = {
+  {8.0, 2.0, 4.0, 1.05},
+  {18.62, 3.85, 12.88, 3.17},
+  {2.0, 2.0, 2.0, 2.0},
+  {5.50, 2.75, 3.89, 1.99},
+  {2.0, 2.0, 2.0, 2.0},
+  {3.25, 3.25, 3.25, 3.25},
+  {5.0, 5.0, 5.0, 5.0}};
+static const double SIG_PHIZ[NSIGV] = {2.9, 4.74, 2.966, 3.465, 2.488, 3.71, 4.745};
+uint sig_vec; // 0 = baseline (8/2/4/1.05)
+uint phiz_given; // 1 if -z was given (overrides the vector's re-targeted phi_Z)
+char sig_suf[32];
 double tariff_scale; // scales all tariffs in set_tariffs (1 = full policy); used for continuation
 int TSHOCK;
 
