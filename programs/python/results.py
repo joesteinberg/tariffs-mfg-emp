@@ -89,6 +89,47 @@ if not _avail:
     raise SystemExit('results.py: no model output found in %s' % args.cdir)
 mperiods = _avail[0][0].period.values
 
+def _legend_clear(fig, ax, leg):
+    """True if the legend box overlaps no labeled line and no bar."""
+    from matplotlib.patches import Rectangle
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    bb = leg.get_window_extent(r)
+    for l in ax.get_lines():
+        if l.get_label().startswith('_'):
+            continue
+        xy = ax.transData.transform(np.column_stack([l.get_xdata(), l.get_ydata()]))
+        if len(xy) > 1:   # densify so segments crossing the box are caught
+            t = np.linspace(0, 1, 10)[:, None]
+            xy = np.vstack([xy[i] + (xy[i+1]-xy[i])*t for i in range(len(xy)-1)])
+        if bb.count_contains(xy) > 0:
+            return False
+    for p in ax.patches:
+        if isinstance(p, Rectangle) and p.get_height() != 0 and p.get_window_extent(r).overlaps(bb):
+            return False
+    return True
+
+def place_legend(fig, ax, ncl):
+    """Put the legend where it covers no data: try standard locations (with the requested and
+    a wider column count), and if none is clear, add headroom above the data and put it there."""
+    kw = dict(frameon=True, fontsize=8, framealpha=1, edgecolor='white', borderpad=0, borderaxespad=1)
+    n = len([l for l in ax.get_lines() if not l.get_label().startswith('_')])
+    for nc in dict.fromkeys([ncl, max(ncl, 2), max(ncl, 3)]):
+        if nc > n:
+            continue
+        for loc in ['upper left', 'upper center', 'upper right', 'lower left', 'lower center',
+                    'lower right', 'center left', 'center right', 'center']:
+            leg = ax.legend(loc=loc, ncol=nc, **kw)
+            if _legend_clear(fig, ax, leg):
+                return
+    leg = ax.legend(loc='upper left', ncol=max(ncl, 2), **kw)
+    lo, hi = ax.get_ylim()
+    for _ in range(20):
+        if _legend_clear(fig, ax, leg):
+            return
+        hi = hi + 0.1*(hi - lo)
+        ax.set_ylim(lo, hi)
+
 def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.25),noxlab=False,ncl=1):
 
     maxT=51
@@ -107,9 +148,6 @@ def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.2
         lns.append(l)
             
         cnt=cnt+1
-
-    if(leg):
-        ax.legend(frameon=True, loc='best',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1,ncol=ncl)
 
     if(lr_bars):
         ax.bar(maxT+W*n/2 + 2*np.arange(n), [data[col].values[-1] for col in data.columns],
@@ -131,8 +169,11 @@ def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.2
         ax.set_ylabel(ylabel)
 
     ax.axhline(0.0,color='black',lw=1)
-            
     fig.tight_layout()
+
+    if(leg):
+        place_legend(fig, ax, ncl)
+
     savefig(fname)
     plt.clf()
 
@@ -144,7 +185,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     data['Total'] = pct_chg(df_all[s],'lg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_labor_goods_s%d'%s
-    plot_dyn(data,fname,ylim=(-2,5.5),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))        
+    plot_dyn(data,fname,ylim=(-2.5,5.5),lr_bars=True,ylabel='change (percent total goods emp)',size=(3.25,3.25))        
     plt.close('all')
 
 # sector-level employment in each scenario
@@ -155,7 +196,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     data['Const'] = pct_chg(df_all[s],'l5')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_labor_sectors_s%d'%s
-    plot_dyn(data,fname,leg=(s==2),ylim=(-2,4),lr_bars=True,size=(2.5,1.8),noxlab=True)
+    plot_dyn(data,fname,leg=(s==2),ylim=(-3,3.5),lr_bars=True,size=(2.5,1.8),noxlab=True)
     plt.close('all')
     
 # go in each scenario
@@ -188,7 +229,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     #data['Total'] = pct_chg(df_all[s],'lg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_rks_goods_s%d'%s
-    plot_dyn(data,fname,lr_bars=True,ylabel='change in relative capital cost (percent)',size=(3.25,3.25),ylim=(-5,10))
+    plot_dyn(data,fname,lr_bars=True,ylabel='change in relative capital cost (percent)',size=(3.25,3.25),ylim=(-10,6))
     plt.close('all')
 
 # materials costs in each scenario
@@ -199,7 +240,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     #data['Total'] = pct_chg(df_all[s],'lg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_pm2_goods_s%d'%s
-    plot_dyn(data,fname,lr_bars=True,ylabel='change in relative material cost (percent)',size=(3.25,3.25),ylim=(-5,10))
+    plot_dyn(data,fname,lr_bars=True,ylabel='change in relative material cost (percent)',size=(3.25,3.25),ylim=(-1,5))
     plt.close('all')
 
 # intermediate prices in each scenario
@@ -211,7 +252,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     data = pd.DataFrame(data)
     fname = 'fig_dyn_pm_goods_s%d'%s
     #plot_dyn(data,fname,ylim=(-2,4),lr_bars=True,size=(2.5,1.8),noxlab=True)
-    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-5,10),ncl=2)
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-5,20),ncl=2)
     plt.close('all')
 
 # final prices in each scenario
@@ -222,7 +263,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     #data['Total'] = pct_chg(df_all[s],'lg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_pf_goods_s%d'%s
-    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-5,10),ncl=2)
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-3,10),ncl=2)
     plt.close('all')
 
 # imports in each scenario
@@ -233,7 +274,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     data['Total'] = pct_chg(df_all[s],'img')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_imports_goods_s%d'%s
-    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-80,20),ncl=2)
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-80,25),ncl=2)
     plt.close('all')
 
 # exports in each scenario
@@ -244,7 +285,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     data['Total'] = pct_chg(df_all[s],'exg')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_exports_goods_s%d'%s
-    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-80,20),ncl=2)
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-80,5),ncl=2)
     plt.close('all')
 
 # net exports in each scenario
@@ -255,7 +296,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     data['Total'] = pp_chg(df_all[s],'nxg_y')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_nx_goods_s%d'%s
-    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-1,2),ncl=2)
+    plot_dyn(data,fname,leg=(s==2),lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-0.75,2),ncl=2)
     plt.close('all')
 
 # real exchange rate
@@ -264,7 +305,7 @@ for s in [k for k in range(5) if df_all[k] is not None]:
     data['REER'] = pct_chg(df_all[s],'rer')
     data = pd.DataFrame(data)
     fname = 'fig_dyn_rer_s%d'%s
-    plot_dyn(data,fname,leg=False,lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-20,20))
+    plot_dyn(data,fname,leg=False,lr_bars=True,ylabel=None,size=(2.5,1.8),ylim=(-20,2.5))
     plt.close('all')
 
 
@@ -285,7 +326,7 @@ def plot_goods_labor(df, fname, ylabel='change (percent total goods emp)'):
         return
     data = {slabels[s2]: diff_pct_lg(df,'l%d'%s2) for s2 in range(4)}
     data['Total'] = pct_chg(df,'lg')
-    plot_dyn(pd.DataFrame(data),fname,ylim=(-2,3),lr_bars=True,ylabel=ylabel,size=(3.25,3.25))
+    plot_dyn(pd.DataFrame(data),fname,ylim=(-2.5,2),lr_bars=True,ylabel=ylabel,size=(3.25,3.25))
 
 plot_goods_labor(df_all[4], 'fig_dyn_labor_goods_atb_resize', 'change in sectoral emp (percent total goods emp)')
 plot_goods_labor(df_all_ret, 'fig_dyn_labor_goods_atb_retaliation')   # ATB tariffs w/ retaliation
@@ -361,7 +402,7 @@ if have(df_all):
     fig,ax=create_fig()
     ax.bar(data_df.scenario, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1)
     ax.axhline(0.0,color='black',ls='-',lw=0.5)
-    ax.set_ylim(-2.5,5.5)
+    ax.set_ylim(-3,6)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent chg in goods emp')
     fig.tight_layout()    
@@ -390,7 +431,7 @@ if have(df_all):
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
     ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    ax.set_ylim(-2.5,5.5)
+    ax.set_ylim(-3,6)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('change (percent total goods emp)')
     fig.tight_layout()    
@@ -404,7 +445,7 @@ if have(df_all, df_chn, df_row):
     fig,ax=create_fig()    
     ax.bar(data_df.scenario, data_df.emp_chg2, width, color='black', alpha=0.99, edgecolor='black', lw=1)
     ax.axhline(0.0,color='black',ls='-',lw=0.5)
-    ax.set_ylim(-2,3.4)
+    ax.set_ylim(-2.5,3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent chg in total goods emp')
     fig.tight_layout()    
@@ -415,7 +456,7 @@ if have(df_all, df_chn, df_row):
     fig,ax=create_fig()    
     ax.bar(data_df.scenario, data_df.emp_chg3, width, color='black', alpha=0.99, edgecolor='black', lw=1)
     ax.axhline(0.0,color='black',ls='-',lw=0.5)
-    ax.set_ylim(-2,3.4)
+    ax.set_ylim(-2.5,3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent chg in total goods emp')
     fig.tight_layout()    
@@ -450,7 +491,7 @@ if have(df_all, df_chn, df_row):
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
     ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    ax.set_ylim(-2,3.4)
+    ax.set_ylim(-2.5,3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent change in total goods emp')
     fig.tight_layout()    
@@ -467,7 +508,7 @@ if have(df_all):
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
     ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    ax.set_ylim(-2,3.4)
+    ax.set_ylim(-2.5,3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('percent change')
     fig.tight_layout()    
@@ -505,7 +546,7 @@ if have(df_all, df_m, df_f):
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
     ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    ax.set_ylim(-2,3.4)
+    ax.set_ylim(-2.5,3.5)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('pct change in total goods emp')
     fig.tight_layout()    
@@ -530,7 +571,7 @@ def plot_lr_emp(df,fname):
     ax.axhline(0.0,color='black',ls='-',lw=0.5)
     ax.set_xlabel('Sector')
     ax.set_ylabel('change in sectoral emp (percent total goods emp)')
-    ax.set_ylim(-1.5,5.5)
+    ax.set_ylim(-2.5,5.5)
     fig.tight_layout()    
     savefig(fname)
     plt.clf()
