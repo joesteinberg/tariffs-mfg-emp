@@ -1,6 +1,6 @@
 """Tables and decompositions from the model output (CSV + LaTeX tabular snippets).
 
-usage: python3 tables.py [--cdir ../c/output] [--out output] [--ghh]
+usage: python3 tables.py [--cdir ../c/output] [--out output] [--ghh] [--partial]
 
 All numbers are computed from the vars*.csv files written by the C model. Changes are relative to
 the no-tariff baseline in the same period; "LR" is the final period of the transition (t = NT).
@@ -20,7 +20,8 @@ Outputs (each with the --ghh suffix when relevant):
 import os
 import numpy as np
 import pandas as pd
-from model_io import (parse_args, load_results, load_results_trump2025, SLABELS, SCEN_CODES)
+from model_io import (parse_args, load_results, load_results_trump2025, check_inputs, note_skipped,
+                      SLABELS, SCEN_CODES)
 
 args = parse_args()
 
@@ -28,9 +29,10 @@ POLICIES = {'Oil': None, 'Steel': None, 'Toys': None, 'Cars': None, 'All': None,
 for name, s in zip(['Oil', 'Steel', 'Toys', 'Cars', 'All'], SCEN_CODES):
     POLICIES[name] = load_results(25, s, 2, 0, 0, 4, args)
 POLICIES['2025'] = load_results_trump2025(0, 0, 4, args)
+check_inputs(args, 'tables.py')
 missing = [k for k, v in POLICIES.items() if v is None]
 if missing:
-    print('tables.py: no output for %s in %s; those rows are omitted' % (', '.join(missing), args.cdir))
+    note_skipped(args, 'tables.py', 'rows for %s (model output not in %s)' % (', '.join(missing), args.cdir))
 POLICIES = {k: v for k, v in POLICIES.items() if v is not None}
 if not POLICIES:
     raise SystemExit('tables.py: no model output found in %s' % args.cdir)

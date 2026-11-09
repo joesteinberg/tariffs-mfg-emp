@@ -114,6 +114,13 @@ int gnewton_iterate (gnewton_state_t * state)
     
     if (status != GSL_SUCCESS)
       {
+        /* trial point is outside the model's domain (e.g. GHH X <= 0) or otherwise
+           cannot be evaluated: backtrack, and give up only once the step is negligible */
+        if (t > 1.0e-10)
+          {
+            t *= 0.1;
+            goto new_step;
+          }
         return GSL_EBADFUNC;
       }
   }

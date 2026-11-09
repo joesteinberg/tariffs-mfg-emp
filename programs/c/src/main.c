@@ -331,7 +331,11 @@ int quant_exercise()
       fprintf(logfile, "\nProgram failed!\n");
       return 1;
     }
-  calc_welfare(&(eee0[0]), &(ppp0[0]));
+  if(calc_welfare(&(eee0[0]), &(ppp0[0])))
+    {
+      fprintf(logfile, "\nProgram failed!\n");
+      return 1;
+    }
 
   write_eqm_vars(&(eee0[0]),&(ppp0[0]),"vars0_usa",0);
   write_eqm_vars(&(eee0[0]),&(ppp0[0]),"vars0_chn",1);
@@ -452,7 +456,11 @@ int quant_exercise()
 	}
     }
 
-  calc_welfare(&(eee1[0]), &(ppp1[0]));
+  if(calc_welfare(&(eee1[0]), &(ppp1[0])))
+    {
+      fprintf(logfile, "\nProgram failed!\n");
+      return 1;
+    }
 
   write_eqm_vars(&(eee1[0]),&(ppp1[0]),"vars1_usa",0);
   write_eqm_vars(&(eee1[0]),&(ppp1[0]),"vars1_chn",1);

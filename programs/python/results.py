@@ -44,8 +44,8 @@ def which_bottom(bottom_p, bottom_n, data):
 # load the results (see model_io.py for options: --cdir, --out, --ghh)
 
 import os
-from model_io import (parse_args, load_results, load_results_trump2025, have,
-                      pct_chg, diff_pct_lg, pp_chg, SLABELS, SCENARIOS, SCEN_CODES)
+from model_io import (parse_args, load_results, load_results_trump2025, have, check_inputs,
+                      note_skipped, pct_chg, diff_pct_lg, pp_chg, SLABELS, SCENARIOS, SCEN_CODES)
 
 args = parse_args()
 
@@ -53,7 +53,9 @@ def savefig(fname):
     plt.savefig(os.path.join(args.out, fname + args.suffix + '.pdf'))
 
 def skipped(what):
-    print('results.py: skipping %s (model output not found in %s)' % (what, args.cdir))
+    # only reached with --partial or for figures outside the GHH set (check_inputs below)
+    why = 'not part of the GHH sensitivity set' if args.ghh else 'model output not in %s' % args.cdir
+    note_skipped(args, 'results.py', '%s (%s)' % (what, why))
 
 t=25
 d=0
@@ -70,6 +72,7 @@ df_all_ret = load_results(t,6,2,1,0,4,args)
 df_all_trans = load_results(t,6,2,0,1,4,args)
 df_all_noadj = load_results(t,6,2,0,0,0,args)
 df_trump2025 = load_results_trump2025(0,0,4,args)
+check_inputs(args, 'results.py')
 
 slabels = SLABELS
 
@@ -358,9 +361,6 @@ plot_tb(df_trump2025, 'fig_dyn_tb_trump2025')
 if have(df_all):
     for var,fname,ylabel in [('nx_y','fig_dyn_tb_across','change in trade balance (pp of GDP)'),
                              ('b_y','fig_dyn_nfa_across','change in NFA (pp of GDP)')]:
-        if var not in df_all[0][0]:
-            skipped(fname + ' (needs revised model output)')
-            continue
         data = pd.DataFrame({scenarios[s]: pp_chg(df_all[s],var) for s in range(5)})
         plot_dyn(data,fname,ylabel=ylabel,size=(3.25*0.5/0.4,3.4),lr_bars=True)
         plt.close('all')

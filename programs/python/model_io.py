@@ -5,6 +5,14 @@ Command-line options (parsed by both scripts):
   --out DIR     where figures/tables are written (default output)
   --ghh         use the endogenous-labor (GHH) sensitivity runs, i.e. files with the _ghh suffix;
                 output names get the same suffix so they do not overwrite the baseline results
+  --partial     allow expected model runs to be missing. Only into a fresh --out directory: the
+                skipped inputs and outputs are listed in PARTIAL_MANIFEST.txt there, so a partial
+                set can never sit next to stale figures/tables from an earlier complete run.
+
+Without --partial, every expected run must be present (all scenarios for the baseline; the
+headline set GHH_RUNS with --ghh), otherwise the scripts stop before writing anything.
+Model output must come from the revised C code: files lacking REQUIRED_COLS (written before the
+GDP/consumption/NFA columns were added) are rejected rather than reinterpreted.
 """
 import argparse
 import os
@@ -15,16 +23,59 @@ SLABELS = ['Oil', 'Steel', 'Toys', 'Cars']
 SCENARIOS = ['Oil', 'Steel', 'Toys', 'Cars', 'All']
 SCEN_CODES = [0, 1, 3, 4, 6]          # -s codes for the five single/all-goods policies
 
+# Columns written by the revised model code (eba2c21 and later). Older files define ngdp on the
+# production side and have no CES consumption aggregate, so they are not comparable.
+REQUIRED_COLS = ['ngdp_prod', 'b', 'cagg', 'pc_exact', 'welfare']
+
+# Runs that make up the GHH sensitivity set (run_all.sh); keys as in load_results/_trump2025.
+GHH_RUNS = {(25, s, 2, 0, 0, 4) for s in SCEN_CODES} | {('trump2025', 0, 0, 4)}
+
+MANIFEST = 'PARTIAL_MANIFEST.txt'
+_missing = []        # expected model files not found, recorded by the loaders
+
 
 def parse_args():
     ap = argparse.ArgumentParser()
     ap.add_argument('--cdir', default='../c/output')
     ap.add_argument('--out', default='output')
     ap.add_argument('--ghh', action='store_true')
+    ap.add_argument('--partial', action='store_true')
     args = ap.parse_args()
     args.suffix = '_ghh' if args.ghh else ''
     os.makedirs(args.out, exist_ok=True)
+    if args.partial:
+        manifest = os.path.join(args.out, MANIFEST)
+        if not os.path.exists(manifest):
+            if os.listdir(args.out):
+                raise SystemExit('--partial writes only to a fresh (empty) --out directory; %s is not empty'
+                                 % args.out)
+            with open(manifest, 'w') as f:
+                f.write('Partial results: generated from incomplete model output in %s\n' % args.cdir)
+                f.write('Items below were skipped; everything else in this directory was generated.\n')
     return args
+
+
+def _record(args, line):
+    if args.partial:
+        with open(os.path.join(args.out, MANIFEST), 'a') as f:
+            f.write(line + '\n')
+
+
+def check_inputs(args, tool):
+    """Stop unless every expected run was found (or --partial, which records what is missing)."""
+    if not _missing:
+        return
+    if not args.partial:
+        raise SystemExit('%s: expected model output missing (nothing written):\n  %s\n'
+                         'Run the missing scenarios, or use --partial with a fresh --out directory.'
+                         % (tool, '\n  '.join(_missing)))
+    for p in _missing:
+        _record(args, '%s: missing input %s' % (tool, p))
+
+
+def note_skipped(args, tool, what):
+    print('%s: skipping %s' % (tool, what))
+    _record(args, '%s: skipped %s' % (tool, what))
 
 
 def process_results(models):
@@ -47,37 +98,47 @@ def process_results(models):
         m['rim'] = m['rim1'] + m['rim2']
         m['rexg'] = m['rexs0'] + m['rexs1'] + m['rexs2'] + m['rexs3']
         m['rimg'] = m['rims0'] + m['rims1'] + m['rims2'] + m['rims3']
-        if 'cagg' not in m:                  # pre-revision output: fall back to summed goods consumption
-            m['cagg'] = m['c']
-        if 'pc_exact' in m:
-            m['nc'] = m['pc_exact'] * m['cagg']            # nominal consumption = sum_s p_s c_s
+        m['nc'] = m['pc_exact'] * m['cagg']                # nominal consumption = sum_s p_s c_s
         m['ni'] = m['pi'] * m['ii']                        # nominal investment
         for col in [c for c in m.columns if 'nx' in c and not c.endswith('_y')]:
-            m[col + '_y'] = m[col] / m['ngdp']
-        if 'b' in m:
-            m['b_y'] = m['b'] / m['ngdp']
+            m[col + '_y'] = m[col] / m['ngdp']             # ngdp: expenditure-side nominal GDP
+        m['b_y'] = m['b'] / m['ngdp']
     return models
 
 
 def _read(path):
-    return pd.read_csv(path) if os.path.exists(path) else None
+    if not os.path.exists(path):
+        return None
+    df = pd.read_csv(path)
+    lacking = [c for c in REQUIRED_COLS if c not in df.columns]
+    if lacking:
+        raise SystemExit('%s was written by model code that predates the revision (no %s); '
+                         'regenerate it with the current code.' % (path, ', '.join(lacking)))
+    return df
+
+
+def _load_pair(key, base, cf, args):
+    b, x = _read(base), _read(cf)
+    if b is None or x is None:
+        if not args.ghh or key in GHH_RUNS:          # expected for this set of results
+            _missing.extend(p for p, v in [(base, b), (cf, x)] if v is None and p not in _missing)
+        return None
+    return process_results([b, x])
 
 
 def load_results(t, s, c, r, d, a, args):
     """Baseline and counterfactual US paths for a scalar-tariff scenario; None if not run."""
-    b = _read(os.path.join(args.cdir, 'vars0_usa_a%d%s.csv' % (a, args.suffix)))
-    x = _read(os.path.join(args.cdir, 'vars1_usa_t%d_s%d_c%d_r%d_d%d_a%d%s.csv' % (t, s, c, r, d, a, args.suffix)))
-    if b is None or x is None:
-        return None
-    return process_results([b, x])
+    return _load_pair((t, s, c, r, d, a),
+                      os.path.join(args.cdir, 'vars0_usa_a%d%s.csv' % (a, args.suffix)),
+                      os.path.join(args.cdir, 'vars1_usa_t%d_s%d_c%d_r%d_d%d_a%d%s.csv'
+                                   % (t, s, c, r, d, a, args.suffix)), args)
 
 
 def load_results_trump2025(r, d, a, args):
-    b = _read(os.path.join(args.cdir, 'vars0_usa_a%d%s.csv' % (a, args.suffix)))
-    x = _read(os.path.join(args.cdir, 'vars1_usa_trump2025_r%d_d%d_a%d%s.csv' % (r, d, a, args.suffix)))
-    if b is None or x is None:
-        return None
-    return process_results([b, x])
+    return _load_pair(('trump2025', r, d, a),
+                      os.path.join(args.cdir, 'vars0_usa_a%d%s.csv' % (a, args.suffix)),
+                      os.path.join(args.cdir, 'vars1_usa_trump2025_r%d_d%d_a%d%s.csv'
+                                   % (r, d, a, args.suffix)), args)
 
 
 def have(*dfs):

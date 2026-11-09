@@ -19,7 +19,11 @@ int jacobian(
 
   if(set_f0)
     {
-      (*F)(x,NULL,f0[0]);
+      if((*F)(x,NULL,f0[0]) != GSL_SUCCESS)
+	{
+	  fprintf(logfile,"\t\tFunction evaluation failed at the Jacobian base point!\n");
+	  return GSL_EFAILED;
+	}
     }
 
   if(par)
@@ -57,7 +61,13 @@ int jacobian(
 	  double h = epsjac;
 	  gsl_vector_set(xh[it],i,gsl_vector_get(xh[it],i)+h);
 
-	  (*F)(xh[it],&it,fh[it]);
+	  if((*F)(xh[it],&it,fh[it]) != GSL_SUCCESS)
+	    {
+	      fprintf(logfile,"\t\tFunction evaluation failed in Jacobian column %d (thread %d)\n",i,it);
+	      abort = 1;
+#pragma omp flush(abort)
+	      continue;
+	    }
 	  uint j;
 	  for(j=0; j<solver_n; j++)
 	    {	      
@@ -76,6 +86,11 @@ int jacobian(
 		}
 	    }
 	}
+    }
+
+  if(abort)
+    {
+      return GSL_EFAILED;
     }
 
   double col_chk[solver_n];

@@ -1171,6 +1171,30 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
   return 0;
 }      
 
+// GHH utility is defined only for X = C - psiL*L^(1+1/frisch)/(1+1/frisch) > 0. pow(X,-gam) is
+// finite for X < 0 (and positive when gam is even), so the NaN/Inf checks on the residuals would
+// not catch a trial point outside the domain. Returns 1 (and logs) if any country/period in
+// [t0,t1] has a non-finite or non-positive X.
+uint ghh_domain_bad(const eqm * e, const params * p, int t0, int t1)
+{
+  int t;
+  uint i;
+  for(t=t0; t<=t1; t++)
+    {
+      for(i=0; i<NC; i++)
+	{
+	  double x = ghh_x(e->c_t[t][i],e->ll_t[t][i],p->eps[i][0],p->rho,p->psiL[i],p->frisch);
+	  if(!isfinite(x) || x <= 0.0)
+	    {
+	      if(solver_verbose)
+		fprintf(logfile,"		GHH domain violated: X = %0.6g (country %d, period %d)\n",x,i,t);
+	      return 1;
+	    }
+	}
+    }
+  return 0;
+}
+
 uint eval_bgp_conds(const double * myx, double * myf, uint tn)
 {
   uint i=0,s=0,t=NT,nx=0;
@@ -1182,6 +1206,10 @@ uint eval_bgp_conds(const double * myx, double * myf, uint tn)
   e->b_t[t][2] = bbgp[2];
   unstack_bgp_vars(e,myx);
   if(set_vars(e,p,t,1))
+    {
+      return 1;
+    }
+  if(ghh_domain_bad(e,p,t,t))
     {
       return 1;
     }
@@ -1345,6 +1373,11 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 	  fprintf(logfile,"Error calling set_vars1!\n");
 	  return 1;
 	}
+    }
+
+  if(ghh_domain_bad(e,p,t0,NT))
+    {
+      return 1;
     }
 
   nx=0;
@@ -1542,11 +1575,14 @@ uint solve_eqm(int start_flag)
       solver_n = neqm;
       alloc_solver_mem();
       
+      // start_flag==0: start from the no-tariff solution; 1: from the previous tariff solve.
+      // Both are thread 0's state, which solve_eqm re-evaluates at the accepted solution
+      // before returning (the Jacobian uses every thread's state as scratch space).
       eqm * e;
       if(start_flag==0)
 	e = &(eee0[0]);
       else
-	e = &(eee1[1]);
+	e = &(eee1[0]);
 
       if(read_seed==1)
 	{
@@ -1562,7 +1598,8 @@ uint solve_eqm(int start_flag)
 	  uint it;
 	  for(it=0; it<NTH; it++)
 	    {
-	      copy_vars( &(eee1[it]), e  );
+	      if(&(eee1[it]) != e)
+		copy_vars( &(eee1[it]), e  );
 	    }
 	  if(stack_eqm_vars(solver_x->data,e))
 	    {
@@ -1599,6 +1636,19 @@ uint solve_eqm(int start_flag)
 	  write_vec_bin(solver_x->data, neqm, sname);
 	}
 
+      // Put the exact accepted solution into thread 0's state (eee0[0] or eee1[0]), which is
+      // what gets written out and what the next solve starts from. After the last Newton step
+      // that state holds a finite-difference Jacobian perturbation.
+      if(!status)
+	{
+	  par=0;
+	  if(eqm_func_f(solver_x,NULL,f0[0]) != GSL_SUCCESS)
+	    {
+	      fprintf(logfile,"Error re-evaluating equilibrium at the solution!\n");
+	      status = 1;
+	    }
+	  par=1;
+	}
     }
 
   free_solver_mem();
@@ -1606,9 +1656,14 @@ uint solve_eqm(int start_flag)
   return status;
 }
 
-void calc_welfare(eqm * e, const params * p)
+uint calc_welfare(eqm * e, const params * p)
 {
   int t, i;
+  if(ghh_domain_bad(e,p,0,NT))
+    {
+      fprintf(logfile,"Welfare undefined: GHH composite X <= 0 in the solution!\n");
+      return 1;
+    }
   // GHH lifetime utility: W_t = u(X_t) + beta * W_{t+1}, terminal steady state W_NT = u(X_NT)/(1-beta)
   for(i=0; i<NC; i++)
     {
@@ -1640,6 +1695,7 @@ void calc_welfare(eqm * e, const params * p)
 
  	}
     }
+  return 0;
 }
 
 ///////////////////////////////

@@ -117,7 +117,8 @@ uint eval_bgp_conds(const double * myx, double * myf, uint tn); // evaluates the
 uint solve_bgp(double bb[NC]); // solves for the balanced growth path
 uint eval_eqm_conds(const double * myx, double * myf, uint tn); // evaluates the deterministic equilibrium conditions
 uint solve_eqm(int start_flag); // solves for the deterministic equilibrium
-void calc_welfare(eqm * e, const params * p);
+uint calc_welfare(eqm * e, const params * p);
+uint ghh_domain_bad(const eqm * e, const params * p, int t0, int t1);
 
 // inlined equilibrium equations
 static inline double mpk_rk(const params * p, const eqm * e, uint t, uint i, uint s)
