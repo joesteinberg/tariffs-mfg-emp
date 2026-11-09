@@ -27,20 +27,20 @@ Solving for free-trade benchmark...
 	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
 
 	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 9.00
-		1, 26 secs	max = 5.48e-11, 3773	min = -9.59e-11, 458
-	Finished: success. Time = 38.00, iter = 1, sum |f| = 2.58242e-09
+		Initialization complete. Time = 6.00
+		1, 24 secs	max = 9.89e-12, 5138	min = -1.40e-11, 19551
+	Finished: success. Time = 33.00, iter = 1, sum |f| = 1.16485e-09
 
 Solving for equilibrium with tariffs...
 
 	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 9.00
-		1, 25 secs	max = 8.91e-01, 19501	min = -5.26e-01, 19506
-		2, 26 secs	max = 6.59e-02, 68	min = -1.16e-01, 15991
-		3, 25 secs	max = 1.42e-02, 19365	min = -1.01e-02, 19371
-		4, 26 secs	max = 1.05e-04, 19365	min = -7.64e-05, 19371
-		5, 25 secs	max = 5.38e-09, 19365	min = -4.34e-09, 19371
-	Finished: success. Time = 139.00, iter = 5, sum |f| = 2.84107e-08
+		Initialization complete. Time = 6.00
+		1, 23 secs	max = 8.51e-01, 19501	min = -5.17e-01, 19506
+		2, 24 secs	max = 2.85e-02, 12	min = -8.96e-02, 11896
+		3, 23 secs	max = 6.25e-03, 19365	min = -4.45e-03, 19371
+		4, 23 secs	max = 2.08e-05, 19365	min = -1.51e-05, 19371
+		5, 24 secs	max = 4.42e-10, 19365	min = -2.06e-09, 19551
+	Finished: success. Time = 126.00, iter = 5, sum |f| = 7.63834e-09
 Short run trade elasticities:
 
 ----------------------------------------------------------------------

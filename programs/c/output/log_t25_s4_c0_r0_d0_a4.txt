@@ -27,21 +27,21 @@ Solving for free-trade benchmark...
 	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
 
 	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 7.00
-		1, 23 secs	max = 5.48e-11, 3773	min = -9.59e-11, 458
-	Finished: success. Time = 32.00, iter = 1, sum |f| = 2.58242e-09
+		Initialization complete. Time = 6.00
+		1, 24 secs	max = 9.89e-12, 5138	min = -1.40e-11, 19551
+	Finished: success. Time = 33.00, iter = 1, sum |f| = 1.16485e-09
 
 Solving for equilibrium with tariffs...
 
 	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 6.00
-		1, 24 secs	max = 3.24e-02, 19157	min = -1.29e-02, 19306
-		2, 23 secs	max = 3.86e-04, 19356	min = -2.21e-04, 19435
-		3, 23 secs	max = 1.44e-07, 18526	min = -2.28e-07, 19306
-		4, 23 secs	max = 5.38e-11, 18331	min = -2.17e-11, 18916
-	Finished: success. Time = 102.00, iter = 4, sum |f| = 1.69602e-09
+		Initialization complete. Time = 7.00
+		1, 23 secs	max = 3.20e-02, 19161	min = -1.29e-02, 19306
+		2, 24 secs	max = 3.77e-04, 19157	min = -2.19e-04, 19435
+		3, 23 secs	max = 6.13e-08, 19551	min = -1.91e-07, 18916
+		4, 23 secs	max = 1.26e-11, 18722	min = -3.06e-11, 17941
+	Finished: success. Time = 102.00, iter = 4, sum |f| = 1.12906e-09
 Short run trade elasticities:
-Dn-lo: 0.3972
+Dn-lo: 0.3933
 
 ----------------------------------------------------------------------
 
