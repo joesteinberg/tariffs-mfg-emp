@@ -41,7 +41,7 @@ def which_bottom(bottom_p, bottom_n, data):
 
 
 ##########################################################################
-# load the results (see model_io.py for options: --cdir, --out, --ghh)
+# load the results (see model_io.py for options: --cdir, --out, --ghh, --pz, --partial)
 
 import os
 from model_io import (parse_args, load_results, load_results_trump2025, have, check_inputs,
@@ -54,7 +54,7 @@ def savefig(fname):
 
 def skipped(what):
     # only reached with --partial or for figures outside the GHH set (check_inputs below)
-    why = 'not part of the GHH sensitivity set' if args.ghh else 'model output not in %s' % args.cdir
+    why = 'not part of the sensitivity run set' if args.sens else 'model output not in %s' % args.cdir
     note_skipped(args, 'results.py', '%s (%s)' % (what, why))
 
 t=25

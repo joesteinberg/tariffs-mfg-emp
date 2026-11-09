@@ -7,7 +7,7 @@
 
 uint parse_args(int argc, char **argv)
 {
-  if(argc != 13 && argc != 15 && argc != 17)
+  if(argc != 13 && argc != 15 && argc != 17 && argc != 19)
     {
       fprintf(logfile,"Wrong number of command line arguments = %d!\n",argc);
       return 1;
@@ -18,7 +18,7 @@ uint parse_args(int argc, char **argv)
 
   fprintf(logfile,"Model scenario:\n");
   
-  while((opt = getopt(argc, argv, "t:s:c:r:d:a:p:l:")) != -1)
+  while((opt = getopt(argc, argv, "t:s:c:r:d:a:p:l:z:")) != -1)
     {
       switch(opt){
 
@@ -185,6 +185,11 @@ uint parse_args(int argc, char **argv)
 	    retaliation_flag=1;
 	    fprintf(logfile,"Yes\n");
 	  }
+	else if(r==2)
+	  {
+	    retaliation_flag=2;
+	    fprintf(logfile,"Symmetric (every country taxes imports from every other country)\n");
+	  }
 	else
 	  {
 	    fprintf(logfile,"Invalid command-line option %d!\n",r);
@@ -286,6 +291,33 @@ uint parse_args(int argc, char **argv)
       case 'l':
 	fixl = atoi(optarg)==1 ? 1 : 0;
 	fprintf(logfile,"-Aggregate labor: %s\n", fixl ? "fixed at baseline" : "endogenous (GHH), output suffix _ghh");
+	break;
+
+      case 'z':
+	// "lo"/"hi": the two calibrated alternatives (globals.h), output suffix _phiZ_lo/_phiZ_hi;
+	// a number: any other value (e.g. during the calibrate_phiz.py search), suffix _pz<value>
+	if(strcmp(optarg,"lo")==0)
+	  {
+	    phiz = PHIZ_LO;
+	    snprintf(phiz_suf,sizeof(phiz_suf),"_phiZ_lo");
+	  }
+	else if(strcmp(optarg,"hi")==0)
+	  {
+	    phiz = PHIZ_HI;
+	    snprintf(phiz_suf,sizeof(phiz_suf),"_phiZ_hi");
+	  }
+	else
+	  {
+	    char * end;
+	    phiz = strtod(optarg,&end);
+	    if(end==optarg || *end!='\0' || !(phiz >= 0.0))
+	      {
+		fprintf(logfile,"Invalid sourcing adjustment cost -z %s!\n",optarg);
+		return 1;
+	      }
+	    snprintf(phiz_suf,sizeof(phiz_suf),"_pz%g",phiz);
+	  }
+	fprintf(logfile,"-Sourcing adjustment cost phi_Z = %g, output suffix %s\n",phiz,phiz_suf);
 	break;
 
       default:
@@ -498,6 +530,8 @@ int main(int argc, char * argv[])
   l_adj_cost=0;
   tariff_policy_flag=0;
   tariff_scale=1.0;
+  phiz=2.9;
+  phiz_suf[0]='\0';
   fixl=1; // baseline: aggregate labor fixed at its calibrated level; -l 0 for endogenous GHH labor
   ghh_prefs=1;
   eval_eqm_once_flag=0;

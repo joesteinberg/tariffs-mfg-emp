@@ -258,4 +258,4 @@ for name, m in POLICIES.items():
 pd.concat(lab).to_csv(out('paths_labor_decomp') + '.csv', index=False)
 pd.concat(ext).to_csv(out('paths_external') + '.csv', index=False)
 
-print('tables.py: wrote tables to %s%s' % (args.out, ' (GHH suffix)' if args.ghh else ''))
+print('tables.py: wrote tables to %s%s' % (args.out, (' (suffix %s)' % args.suffix) if args.suffix else ''))

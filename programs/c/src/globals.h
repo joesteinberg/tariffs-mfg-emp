@@ -73,6 +73,13 @@ uint par;
 uint ghh_prefs;
 uint eval_calfn_once;
 double tariff;
+double phiz; // sourcing adjustment cost phi_Z (etaM = etaF); default 2.9, set with -z
+char phiz_suf[32]; // output-name suffix when -z is given: "_phiZ_lo", "_phiZ_hi", or "_pz<value>"
+// Alternative phi_Z values from calibrate_phiz.py: short-run Armington elasticity (US, impact,
+// symmetric 25% all-goods tariff) of 1.0 (lo, weak frictions) and 0.2 (hi, strong frictions).
+// The baseline 2.9 gives 0.48. Keep in sync with PHIZ in programs/python/model_io.py.
+#define PHIZ_LO 0.6585
+#define PHIZ_HI 12.44
 double tariff_scale; // scales all tariffs in set_tariffs (1 = full policy); used for continuation
 int TSHOCK;
 

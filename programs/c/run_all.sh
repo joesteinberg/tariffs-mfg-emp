@@ -28,3 +28,15 @@ done
 # Trump 2025 end-of-year tariff matrix: sector/source rates from
 # programs/python/output/trump2025_tariffs.csv.
 ./bin/model.bin -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1 > output/log_trump2025_r0_d0_a4.txt
+
+# Sourcing-friction sensitivity (appendix): phi_Z calibrated by calibrate_phiz.py to a short-run
+# Armington elasticity of 1.0 (-z lo) or 0.2 (-z hi); outputs carry _phiZ_lo / _phiZ_hi.
+# The symmetric experiment (-r 2: every country taxes every other) is the calibration statistic.
+./bin/model.bin -t 25 -s 6 -c 2 -r 2 -d 0 -a 4 > output/log_t25_s6_c2_r2_d0_a4.txt
+for z in lo hi; do
+    ./bin/model.bin -t 25 -s 6 -c 2 -r 2 -d 0 -a 4 -z $z > output/log_t25_s6_c2_r2_d0_a4_phiZ_${z}.txt
+    for s in 0 1 3 4 6; do
+	./bin/model.bin -t 25 -s $s -c 2 -r 0 -d 0 -a 4 -z $z > output/log_t25_s${s}_c2_r0_d0_a4_phiZ_${z}.txt
+    done
+    ./bin/model.bin -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1 -z $z > output/log_trump2025_r0_d0_a4_phiZ_${z}.txt
+done

@@ -98,7 +98,7 @@ uint set_nontargeted_params(params * p)
     }
   else
     {
-      p->etaF = 2.9;
+      p->etaF = phiz;
     }
   if(m_adj_cost==0)
     {
@@ -106,7 +106,7 @@ uint set_nontargeted_params(params * p)
     }
   else
     {
-      p->etaM = 2.9;
+      p->etaM = phiz;
     }
   
   if(cobb_douglas_flag2)
@@ -304,6 +304,16 @@ static void set_tariffs_(params * p, uint scenario)
 		      p->tau_m_ts[t][ROW][s][USA] = m_flag*x;
 		      p->tau_f_ts[t][ROW][s][USA] = f_flag*x;
 		    }
+		}
+
+	      // symmetric experiment (-r 2): China and RoW also tax each other, so every country
+	      // taxes imports from every other country (the phi_Z calibration experiment)
+	      if(retaliation_flag==2)
+		{
+		  p->tau_m_ts[t][CHN][s][ROW] = m_flag*x;
+		  p->tau_f_ts[t][CHN][s][ROW] = f_flag*x;
+		  p->tau_m_ts[t][ROW][s][CHN] = m_flag*x;
+		  p->tau_f_ts[t][ROW][s][CHN] = f_flag*x;
 		}
 	    }
 	}

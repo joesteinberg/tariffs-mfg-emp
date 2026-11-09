@@ -605,9 +605,11 @@ uint set_initial_eqm_guess()
 
 uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 {
-  char fname2[128];
-  // baseline closure (fixed aggregate labor) has no suffix; endogenous GHH labor gets "_ghh"
-  const char * lsuf = fixl ? "" : "_ghh";
+  char fname2[160];
+  // baseline closure (fixed aggregate labor, phi_Z = 2.9) has no suffix; endogenous GHH labor
+  // adds "_ghh" and a non-default sourcing cost (-z) adds "_phiZ_lo", "_phiZ_hi" or "_pz<value>"
+  char lsuf[48];
+  snprintf(lsuf,sizeof(lsuf),"%s%s",fixl ? "" : "_ghh",phiz_suf);
 
   if(scenario==1)
     {

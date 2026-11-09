@@ -5,12 +5,15 @@ Command-line options (parsed by both scripts):
   --out DIR     where figures/tables are written (default output)
   --ghh         use the endogenous-labor (GHH) sensitivity runs, i.e. files with the _ghh suffix;
                 output names get the same suffix so they do not overwrite the baseline results
+  --pz lo|hi    use the sourcing-friction sensitivity runs solved with -z lo or -z hi (files with
+                the _phiZ_lo / _phiZ_hi suffix; PHIZ below); outputs get the same suffix. A number
+                instead selects a run solved with -z <number> (suffix _pz<number>). Combines with --ghh.
   --partial     allow expected model runs to be missing. Only into a fresh --out directory: the
                 skipped inputs and outputs are listed in PARTIAL_MANIFEST.txt there, so a partial
                 set can never sit next to stale figures/tables from an earlier complete run.
 
 Without --partial, every expected run must be present (all scenarios for the baseline; the
-headline set GHH_RUNS with --ghh), otherwise the scripts stop before writing anything.
+headline set SENS_RUNS with --ghh or --pz), otherwise the scripts stop before writing anything.
 Model output must come from the revised C code: files lacking REQUIRED_COLS (written before the
 GDP/consumption/NFA columns were added) are rejected rather than reinterpreted.
 """
@@ -27,8 +30,9 @@ SCEN_CODES = [0, 1, 3, 4, 6]          # -s codes for the five single/all-goods p
 # production side and have no CES consumption aggregate, so they are not comparable.
 REQUIRED_COLS = ['ngdp_prod', 'b', 'cagg', 'pc_exact', 'welfare']
 
-# Runs that make up the GHH sensitivity set (run_all.sh); keys as in load_results/_trump2025.
-GHH_RUNS = {(25, s, 2, 0, 0, 4) for s in SCEN_CODES} | {('trump2025', 0, 0, 4)}
+# Runs that make up each sensitivity set (GHH labor, alternative phi_Z): the five single/all-goods
+# policies and the 2025 schedule. Keys as in load_results/_trump2025.
+SENS_RUNS = {(25, s, 2, 0, 0, 4) for s in SCEN_CODES} | {('trump2025', 0, 0, 4)}
 
 MANIFEST = 'PARTIAL_MANIFEST.txt'
 _missing = []        # expected model files not found, recorded by the loaders
@@ -39,9 +43,11 @@ def parse_args():
     ap.add_argument('--cdir', default='../c/output')
     ap.add_argument('--out', default='output')
     ap.add_argument('--ghh', action='store_true')
+    ap.add_argument('--pz', default=None, help='lo, hi, or a phi_Z value')
     ap.add_argument('--partial', action='store_true')
     args = ap.parse_args()
-    args.suffix = '_ghh' if args.ghh else ''
+    args.suffix = suffix(args.ghh, args.pz)
+    args.sens = args.ghh or args.pz is not None
     os.makedirs(args.out, exist_ok=True)
     if args.partial:
         manifest = os.path.join(args.out, MANIFEST)
@@ -53,6 +59,24 @@ def parse_args():
                 f.write('Partial results: generated from incomplete model output in %s\n' % args.cdir)
                 f.write('Items below were skipped; everything else in this directory was generated.\n')
     return args
+
+
+# Alternative sourcing adjustment costs (calibrate_phiz.py), as PHIZ_LO / PHIZ_HI in the C code's
+# globals.h: short-run Armington elasticity 1.0 (lo, weak frictions) and 0.2 (hi, strong frictions).
+PHIZ = {'lo': 0.6585, 'hi': 12.44}
+PHIZ_BASE = 2.9
+
+
+def phiz_value(pz=None):
+    """phi_Z for a --pz argument: None (baseline), 'lo', 'hi', or a number."""
+    return PHIZ_BASE if pz is None else PHIZ[pz] if pz in PHIZ else float(pz)
+
+
+def suffix(ghh=False, pz=None):
+    """File-name suffix used by the C code: _ghh for GHH labor; _phiZ_lo / _phiZ_hi for -z lo / hi,
+    _pz<phi> (as "%g") for -z <number>."""
+    sz = '' if pz is None else '_phiZ_' + pz if pz in PHIZ else '_pz%g' % float(pz)
+    return ('_ghh' if ghh else '') + sz
 
 
 def _record(args, line):
@@ -120,7 +144,7 @@ def _read(path):
 def _load_pair(key, base, cf, args):
     b, x = _read(base), _read(cf)
     if b is None or x is None:
-        if not args.ghh or key in GHH_RUNS:          # expected for this set of results
+        if not args.sens or key in SENS_RUNS:        # expected for this set of results
             _missing.extend(p for p, v in [(base, b), (cf, x)] if v is None and p not in _missing)
         return None
     return process_results([b, x])
