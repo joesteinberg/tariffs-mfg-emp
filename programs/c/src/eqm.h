@@ -275,6 +275,9 @@ static inline double prod_m_chk(const params * p, const eqm * e, uint t, uint i,
 {
   double tmp=0.0;
 
+  // composite net of sourcing adjustment costs: m = CES(m2) - sum_j etaM*(m2_j/m2_j,lag - 1)^2*m2_j,lag
+  // (residual m - CES + cost)
+
   tmp = e->m_t[t][i][s] -
     prod_m(e->m2_t[t][i][s], p->M[i][s], p->mu[i][s], p->zeta[i][s]);
   
@@ -283,7 +286,7 @@ static inline double prod_m_chk(const params * p, const eqm * e, uint t, uint i,
     {
       if(t>0)
 	{
-	  tmp = tmp - 
+	  tmp = tmp + 
 	    p->etaM * 
 	    (e->m2_t[t][i][s][j]/e->m2_t[t-1][i][s][j]-1.0) * 
 	    (e->m2_t[t][i][s][j]/e->m2_t[t-1][i][s][j]-1.0) * 
@@ -291,7 +294,7 @@ static inline double prod_m_chk(const params * p, const eqm * e, uint t, uint i,
 	}
       else
 	{
-	  tmp = tmp - 
+	  tmp = tmp + 
 	    p->etaM * 
 	    (e->m2_t[t][i][s][j]/p->m02[i][s][j]-1.0) * 
 	    (e->m2_t[t][i][s][j]/p->m02[i][s][j]-1.0) * 
@@ -306,6 +309,8 @@ static inline double prod_q_chk(const params * p, const eqm * e, uint t, uint i,
 {
   double tmp = 0.0;
 
+  // composite net of sourcing adjustment costs: q = CES(q2) - sum_j etaF*(q2_j/q2_j,lag - 1)^2*q2_j,lag
+
   tmp = e->q_t[t][i][s] -
     prod_q(e->q2_t[t][i][s], p->H[i][s], p->theta[i][s], p->sig[i][s]);
   
@@ -314,7 +319,7 @@ static inline double prod_q_chk(const params * p, const eqm * e, uint t, uint i,
     {
       if(t>0)
 	{
-	  tmp = tmp - 
+	  tmp = tmp + 
 	    p->etaF * 
 	    (e->q2_t[t][i][s][j]/e->q2_t[t-1][i][s][j]-1.0) * 
 	    (e->q2_t[t][i][s][j]/e->q2_t[t-1][i][s][j]-1.0) * 
@@ -322,7 +327,7 @@ static inline double prod_q_chk(const params * p, const eqm * e, uint t, uint i,
 	}
       else
 	{
-	  tmp = tmp - 
+	  tmp = tmp + 
 	    p->etaF * 
 	    (e->q2_t[t][i][s][j]/p->q02[i][s][j]-1.0) * 
 	    (e->q2_t[t][i][s][j]/p->q02[i][s][j]-1.0) * 
