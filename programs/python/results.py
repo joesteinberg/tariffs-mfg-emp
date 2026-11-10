@@ -63,8 +63,12 @@ r=0
 a=4
 
 df_all = [load_results(t,s,2,r,d,a,args) for s in SCEN_CODES]
-df_chn = [load_results(t,s,0,r,d,a,args) for s in SCEN_CODES]
-df_row = [load_results(t,s,1,r,d,a,args) for s in SCEN_CODES]
+# tariffs on one partner region at a time (-c): China and RoW (3 regions); China, low-tariff and
+# high-tariff partners (4 regions)
+SINGLE = ([('China only', 0, 'chn'), ('RoW only', 1, 'row')] if args.nc == 3 else
+          [('China only', 0, 'chn'), ('Low-tariff only', 3, 'ltp'), ('High-tariff only', 4, 'htp')])
+REGIONS = ['China', 'RoW'] if args.nc == 3 else ['China', 'Low-tariff', 'High-tariff']
+df_single = [[load_results(t,s,c,r,d,a,args) for s in SCEN_CODES] for _, c, _ in SINGLE]
 df_m = [load_results(t,s,2,r,d,a,args) for s in [10,11,13,14,16]]
 df_f = [load_results(t,s,2,r,d,a,args) for s in [20,21,23,24,26]]
 
@@ -161,9 +165,12 @@ def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.2
 
     lns=[]
     cnt=0
+    # six series (4-region trade-balance panels): add orange/dotted before the black "Total"
+    cols_, ls_ = (colors, lses) if n <= len(colors) else (colors[:4] + ['#ff7f00'] + colors[4:],
+                                                          lses[:4] + [(0,(1,1))] + lses[4:])
     for col in data.columns:
         l = ax.plot(mperiods[0:maxT], data[col][0:maxT].values,
-                    linestyle=lses[cnt], color=colors[cnt],
+                    linestyle=ls_[cnt], color=cols_[cnt],
                     marker=None,alpha=0.99,zorder=0,linewidth=1,label=col)
         lns.append(l)
             
@@ -171,7 +178,7 @@ def plot_dyn(data,fname,leg=1,ylim=None,lr_bars=False,ylabel=None,size=(3.25,3.2
 
     if(lr_bars):
         ax.bar(maxT+W*n/2 + 2*np.arange(n), [data[col].values[-1] for col in data.columns],
-               width=W, alpha=0.99, edgecolor='black', lw=1, color=colors)
+               width=W, alpha=0.99, edgecolor='black', lw=1, color=cols_[:n])
         locs, labels = plt.xticks()
         ax.set_xticks([0,10,20,30,40,50,60],labels=['0','10','20','30','40','50','LR'])
         #xticks = ax.get_xticks()
@@ -366,8 +373,10 @@ def plot_tb(df, fname):
     if df is None:
         skipped(fname)
         return
-    data = pd.DataFrame({'Goods': pp_chg(df,'nxg_y'), 'Services': pp_chg(df,'nxsvc_y'),
-                         'China': pp_chg(df,'nx1_y'), 'RoW': pp_chg(df,'nx2_y'), 'Total': pp_chg(df,'nx_y')})
+    data = {'Goods': pp_chg(df,'nxg_y'), 'Services': pp_chg(df,'nxsvc_y')}
+    data.update({reg: pp_chg(df,'nx%d_y' % (j+1)) for j, reg in enumerate(REGIONS)})
+    data['Total'] = pp_chg(df,'nx_y')
+    data = pd.DataFrame(data)
     plot_dyn(data,fname,lr_bars=True,ylabel='change in trade balance (pp of GDP)',size=(3.25,3.25),ncl=2)
     plt.close('all')
 
@@ -407,8 +416,10 @@ width=0.75
 lr = lambda dfs, var, f=pct_chg: np.array([f(x,var)[-1] if x is not None else np.nan for x in dfs])
 
 data_df = pd.DataFrame({'scenario':scenarios,
-                        'emp_chg1':lr(df_all,'lg'), 'emp_chg2':lr(df_chn,'lg'), 'emp_chg3':lr(df_row,'lg'),
+                        'emp_chg1':lr(df_all,'lg'),
                         'gdp_chg':lr(df_all,'rgdp'), 'emp_chg_m':lr(df_m,'lg'), 'emp_chg_f':lr(df_f,'lg')})
+for k, (_, _, tag) in enumerate(SINGLE):
+    data_df['emp_chg_' + tag] = lr(df_single[k],'lg')
 for s2 in range(0,4):
     data_df['emp_chg_s%d'%s2] = lr(df_all,'l%d'%s2,diff_pct_lg)
 data_df = data_df.sort_values(by='emp_chg1',ascending=False).reset_index(drop=True)
@@ -457,53 +468,36 @@ if have(df_all):
 else:
     skipped('LR employment bars across scenarios')
 
-if have(df_all, df_chn, df_row):
-    # china only
-    fig,ax=create_fig()    
-    ax.bar(data_df.scenario, data_df.emp_chg2, width, color='black', alpha=0.99, edgecolor='black', lw=1)
-    ax.axhline(0.0,color='black',ls='-',lw=0.5)
-    fit_ylim(ax, -2.5, 3.5)
-    ax.set_xlabel('targeted sector')
-    ax.set_ylabel('percent chg in total goods emp')
-    fig.tight_layout()    
-    savefig('fig_lr_emp_across_scenarios_chn')
-    plt.clf()
+if have(df_all, *df_single):
+    # each single-region case alone
+    for k, (lab, _, tag) in enumerate(SINGLE):
+        fig,ax=create_fig()
+        ax.bar(data_df.scenario, data_df['emp_chg_' + tag], width, color='black', alpha=0.99, edgecolor='black', lw=1)
+        ax.axhline(0.0,color='black',ls='-',lw=0.5)
+        fit_ylim(ax, -2.5, 3.5)
+        ax.set_xlabel('targeted sector')
+        ax.set_ylabel('percent chg in total goods emp')
+        fig.tight_layout()
+        savefig('fig_lr_emp_across_scenarios_' + tag)
+        plt.clf()
 
-    # row only
-    fig,ax=create_fig()    
-    ax.bar(data_df.scenario, data_df.emp_chg3, width, color='black', alpha=0.99, edgecolor='black', lw=1)
-    ax.axhline(0.0,color='black',ls='-',lw=0.5)
-    fit_ylim(ax, -2.5, 3.5)
-    ax.set_xlabel('targeted sector')
-    ax.set_ylabel('percent chg in total goods emp')
-    fig.tight_layout()    
-    savefig('fig_lr_emp_across_scenarios_row')
-    plt.clf()
-
-    # compare all vs china/row only
+    # tariffs on all partners vs the single-region effects, stacked
     x = np.arange(len(scenarios))
     width=0.75/2
 
     fig,ax=create_fig()    
-    ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Both')
+    ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1,
+           label='Both' if args.nc == 3 else 'All')
 
     bottom_pos=np.zeros(len(scenarios))
     bottom_neg=np.zeros(len(scenarios))
 
-    bcnt=0
-    values = data_df.emp_chg2
-    bottom=which_bottom(bottom_pos,bottom_neg,values)
-    ax.bar(x+width/2, values, width, label='China only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
-    bottom_pos=bottom_pos+vmax(values)
-    bottom_neg=bottom_neg+vmin(values)
-    bcnt += 1
-
-    values = data_df.emp_chg3
-    bottom=which_bottom(bottom_pos,bottom_neg,values)
-    ax.bar(x+width/2, values, width, label='RoW only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
-    bottom_pos=bottom_pos+vmax(values)
-    bottom_neg=bottom_neg+vmin(values)
-    bcnt += 1
+    for bcnt, (lab, _, tag) in enumerate(SINGLE):
+        values = data_df['emp_chg_' + tag]
+        bottom=which_bottom(bottom_pos,bottom_neg,values)
+        ax.bar(x+width/2, values, width, label=lab, bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
+        bottom_pos=bottom_pos+vmax(values)
+        bottom_neg=bottom_neg+vmin(values)
 
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
@@ -515,7 +509,50 @@ if have(df_all, df_chn, df_row):
     savefig('fig_lr_emp_across_scenarios_compare')
     plt.clf()
 else:
-    skipped('China-only / RoW-only comparison')
+    skipped('single-region tariff comparison')
+
+# 4 regions: trade diversion and sectoral employment dynamics of the single-region tariffs
+if args.nc == 4:
+    TGT = [[0], [1], [2], [3], [0, 1, 2, 3]]   # goods sectors targeted by each SCEN_CODES policy
+    def real_imp(m, sectors, j):
+        return sum(m['rims%d-%d' % (s2, j)].values[-1] for s2 in sectors)
+    for k in range(5):
+        cases = [(lab, df_single[n][k]) for n, (lab, _, _) in enumerate(SINGLE)] + [('All', df_all[k])]
+        if any(df is None for _, df in cases):
+            skipped('fig_div_imports_s%d' % k)
+            continue
+        # LR % change in US real imports of the targeted goods from each region
+        vals = np.array([[100*(real_imp(df[1], TGT[k], j+1)/real_imp(df[0], TGT[k], j+1) - 1)
+                          for j in range(len(REGIONS))] for _, df in cases])
+        xd = np.arange(len(cases))
+        wd = 0.8/len(REGIONS)
+        fig,ax=create_fig()
+        for j, reg in enumerate(REGIONS):
+            ax.bar(xd + (j - (len(REGIONS)-1)/2)*wd, vals[:, j], wd, label='from ' + reg, color=colors[j],
+                   alpha=0.99, edgecolor='black', lw=0.5)
+        ax.set_xticks(xd, [lab.replace(' only', '') for lab, _ in cases])
+        ax.axhline(0.0,color='black',ls='-',lw=1)
+        span = max(vals.max(), 0) - min(vals.min(), 0)   # y-range from the data (own-region drops of 15-85%)
+        ax.set_ylim(min(vals.min(), 0) - 0.06*span, max(vals.max(), 0) + 0.06*span)
+        ax.set_xlabel('tariffs on')
+        ax.set_ylabel('change in real imports (percent)')
+        fig.tight_layout()
+        place_legend(fig, ax, 1)
+        savefig('fig_div_imports_s%d' % k)
+        plt.close('all')
+
+    # sectoral goods employment dynamics, as in fig_dyn_labor_goods_s*, for each single-region case
+    for ni, (lab, _, tag) in enumerate(SINGLE):
+        for k in range(5):
+            df = df_single[ni][k]
+            if df is None:
+                skipped('fig_dyn_labor_goods_s%d_%s' % (k, tag))
+                continue
+            data = {slabels[s2]: diff_pct_lg(df,'l%d'%s2) for s2 in range(4)}
+            data['Total'] = pct_chg(df,'lg')
+            plot_dyn(pd.DataFrame(data),'fig_dyn_labor_goods_s%d_%s' % (k, tag),ylim=(-2.5,5.5),lr_bars=True,
+                     ylabel='change (percent total goods emp)',size=(3.25,3.25))
+            plt.close('all')
 
 if have(df_all):
     # compare emp vs gdp

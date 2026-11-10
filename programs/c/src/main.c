@@ -149,26 +149,18 @@ uint parse_args(int argc, char **argv)
       case 'c':
 	c = atoi(optarg);
 	fprintf(logfile,"-Targeted country: ");
-	if(c==0)
-	  {
-	    target_country_flag=0;
-	    fprintf(logfile,"China only\n");
-	  }
-	else if(c==1)
-	  {
-	    target_country_flag=1;
-	    fprintf(logfile,"Rest of world\n");
-	  }
-	else if(c==2)
-	  {
-	    target_country_flag=2;
-	    fprintf(logfile,"China + rest of world\n");
-	  }
-	else
-	  {
-	    fprintf(logfile,"Invalid command-line option %d!\n",c);
-	    return 1;
-	  }
+	{
+	  // see target_partner in globals.h
+	  const char * cdesc[] = {"China only","all non-China partners","all partners",
+				  "low-tariff partners only","high-tariff partners only"};
+	  if(c<0 || c>(NC==4 ? 4 : 2))
+	    {
+	      fprintf(logfile,"Invalid command-line option %d!\n",c);
+	      return 1;
+	    }
+	  target_country_flag=c;
+	  fprintf(logfile,"%s\n",cdesc[c]);
+	}
 
 	break;
 
@@ -423,9 +415,12 @@ int quant_exercise()
       return 1;
     }
 
-  write_eqm_vars(&(eee0[0]),&(ppp0[0]),"vars0_usa",0);
-  write_eqm_vars(&(eee0[0]),&(ppp0[0]),"vars0_chn",1);
-  write_eqm_vars(&(eee0[0]),&(ppp0[0]),"vars0_row",2);
+  for(uint i=0; i<NC; i++)
+    {
+      char nm[32];
+      snprintf(nm,sizeof(nm),"vars0_%s",CNAME[i]);
+      write_eqm_vars(&(eee0[0]),&(ppp0[0]),nm,i);
+    }
   
   //fixl = fixl_;
 
@@ -548,9 +543,12 @@ int quant_exercise()
       return 1;
     }
 
-  write_eqm_vars(&(eee1[0]),&(ppp1[0]),"vars1_usa",0);
-  write_eqm_vars(&(eee1[0]),&(ppp1[0]),"vars1_chn",1);
-  write_eqm_vars(&(eee1[0]),&(ppp1[0]),"vars1_row",2);
+  for(uint i=0; i<NC; i++)
+    {
+      char nm[32];
+      snprintf(nm,sizeof(nm),"vars1_%s",CNAME[i]);
+      write_eqm_vars(&(eee1[0]),&(ppp1[0]),nm,i);
+    }
 
   // with a portfolio adjustment cost, also solve for the long run directly: the tariff steady
   // state with bonds at b0, the same for every psi_B (one row, period NT, in ss1_*.csv)
@@ -563,9 +561,12 @@ int quant_exercise()
 	}
       else
 	{
-	  write_eqm_vars_from(&(eee1[0]),&(ppp1[0]),"ss1_usa",0,NT);
-	  write_eqm_vars_from(&(eee1[0]),&(ppp1[0]),"ss1_chn",1,NT);
-	  write_eqm_vars_from(&(eee1[0]),&(ppp1[0]),"ss1_row",2,NT);
+	  for(uint i=0; i<NC; i++)
+	    {
+	      char nm[32];
+	      snprintf(nm,sizeof(nm),"ss1_%s",CNAME[i]);
+	      write_eqm_vars_from(&(eee1[0]),&(ppp1[0]),nm,i,NT);
+	    }
 	}
     }
 

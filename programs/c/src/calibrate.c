@@ -153,7 +153,8 @@ uint load_iomat(params * p)
   double tmp;
   FILE * file;
 
-  file = fopen("../python/output/iomat.txt","rb");
+  // 3 regions: iomat.txt; 4 regions: iomat_nc4.txt (both written by icio.py)
+  file = fopen(NC==3 ? "../python/output/iomat.txt" : "../python/output/iomat_nc4.txt","rb");
 
   if(file)
     {
@@ -239,10 +240,11 @@ static void set_tariffs_(params * p, uint scenario)
 		  if(duration_flag==1 && t>=4)
 		    duration_scale = 0.0;
 
-		  p->tau_m_ts[t][USA][s][CHN] = duration_scale*trump2025_tau[s][CHN];
-		  p->tau_f_ts[t][USA][s][CHN] = duration_scale*trump2025_tau[s][CHN];
-		  p->tau_m_ts[t][USA][s][ROW] = duration_scale*trump2025_tau[s][ROW];
-		  p->tau_f_ts[t][USA][s][ROW] = duration_scale*trump2025_tau[s][ROW];
+		  for(uint j=1; j<NC; j++)
+		    {
+		      p->tau_m_ts[t][USA][s][j] = duration_scale*trump2025_tau[s][j];
+		      p->tau_f_ts[t][USA][s][j] = duration_scale*trump2025_tau[s][j];
+		    }
 		}
 	    }
 	  return;
@@ -277,40 +279,32 @@ static void set_tariffs_(params * p, uint scenario)
 	      int m_flag = target_sector_flag<=16;
 	      int f_flag = target_sector_flag<10 || target_sector_flag>=20;
 	      
-	      // tariffs on China
-	      if(target_country_flag==0 || target_country_flag==2) 
+	      // US tariffs on each targeted partner (target_partner, -c), and their retaliation
+	      for(uint j=1; j<NC; j++)
 		{
-		  p->tau_m_ts[t][USA][s][CHN] = m_flag*x;
-		  p->tau_f_ts[t][USA][s][CHN] = f_flag*x;
+		  if(!target_partner(j))
+		    continue;
+		  p->tau_m_ts[t][USA][s][j] = m_flag*x;
+		  p->tau_f_ts[t][USA][s][j] = f_flag*x;
 
 		  if(retaliation_flag)
 		    {
-		      p->tau_m_ts[t][CHN][s][USA] = m_flag*x;
-		      p->tau_f_ts[t][CHN][s][USA] = f_flag*x;
+		      p->tau_m_ts[t][j][s][USA] = m_flag*x;
+		      p->tau_f_ts[t][j][s][USA] = f_flag*x;
 		    }
 		}
 
-	      // tariffs on ROW
-	      if(target_country_flag==1 || target_country_flag==2)
-		{
-		  p->tau_m_ts[t][USA][s][ROW] = m_flag*x;
-		  p->tau_f_ts[t][USA][s][ROW] = f_flag*x;
-
-		  if(retaliation_flag)
-		    {
-		      p->tau_m_ts[t][ROW][s][USA] = m_flag*x;
-		      p->tau_f_ts[t][ROW][s][USA] = f_flag*x;
-		    }
-		}
-
-	      // symmetric experiment (-r 2): China and RoW also tax each other, so every country
-	      // taxes imports from every other country (the phi_Z calibration experiment)
+	      // symmetric experiment (-r 2): the non-US regions also tax each other, so every
+	      // country taxes imports from every other country (the phi_Z calibration experiment)
 	      if(retaliation_flag==2)
 		{
-		  p->tau_m_ts[t][CHN][s][ROW] = m_flag*x;
-		  p->tau_f_ts[t][CHN][s][ROW] = f_flag*x;
-		  p->tau_m_ts[t][ROW][s][CHN] = m_flag*x;
-		  p->tau_f_ts[t][ROW][s][CHN] = f_flag*x;
+		  for(uint j=1; j<NC; j++)
+		    for(uint k=1; k<NC; k++)
+		      if(j!=k)
+			{
+			  p->tau_m_ts[t][j][s][k] = m_flag*x;
+			  p->tau_f_ts[t][j][s][k] = f_flag*x;
+			}
 		}
 	    }
 	}
@@ -531,9 +525,9 @@ uint store_base_period_values(params * p)
   // p->b0[2] = -sum(p->b0,2);
 
   double xx = (1.0+p->rss)/p->rss;
-  p->b0[0] = -SUM(p->nx0[0],NC) * xx;
-  p->b0[1] = -SUM(p->nx0[1],NC) * xx;
-  p->b0[2] = -sum(p->b0,2);
+  for(uint i=0; i<NC-1; i++)
+    p->b0[i] = -SUM(p->nx0[i],NC) * xx;
+  p->b0[NC-1] = -sum(p->b0,NC-1); // last region: bond market clearing
 
   return 0;
 

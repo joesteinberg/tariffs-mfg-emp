@@ -38,6 +38,21 @@ HS2007_ISIC4_URL = (
 )
 
 MODEL_SECTORS = ["UPH", "UPL", "DNH", "DNL"]
+
+# Four-region model (C code built with NC = 4): non-China partners split into low-tariff (LTP) and
+# high-tariff (HTP) partners at the import-weighted median 2025 goods-tariff increase (the EU,
+# 8.4%). Tracker partner files (Census country codes) of the high-tariff partners; the tracker's
+# residual (total less China, the EU, and every listed non-EU partner) is also high-tariff. The
+# low-tariff partners are the remaining non-China imports. Same split as HTP in icio.py.
+PARTNER_CODES = {
+    "1220": "CAN", "2010": "MEX", "3010": "COL", "3370": "CHL", "3510": "BRA",
+    "4120": "GBR", "4419": "CHE", "4621": "RUS", "5081": "ISR", "5170": "SAU",
+    "5330": "IND", "5490": "THA", "5520": "VNM", "5570": "MYS", "5590": "SGP",
+    "5600": "IDN", "5800": "KOR", "5830": "TWN", "5880": "JPN", "6021": "AUS",
+}   # listed non-EU partners (EU members are covered by the EU aggregate file, 0003)
+HTP_LISTED = ["BRA", "IDN", "IND", "JPN", "KOR", "MYS", "THA", "VNM"]
+EU_CODE = "0003"
+DEFAULT_OUTPUT_NC4 = ROOT / "programs" / "python" / "output" / "trump2025_tariffs_nc4.csv"
 MODEL_SECTOR_NAMES = {
     "UPH": "Oil",
     "UPL": "Steel",
@@ -177,6 +192,7 @@ def read_args() -> argparse.Namespace:
     parser.add_argument("--target-date", default="2025-12")
     parser.add_argument("--baseline-year", default="2024")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--output-nc4", type=Path, default=DEFAULT_OUTPUT_NC4)
     parser.add_argument("--diagnostics", type=Path, default=DEFAULT_DIAGNOSTICS)
     parser.add_argument("--header", type=Path, default=DEFAULT_HEADER)
     parser.add_argument("--allow-negative", action="store_true",
@@ -494,6 +510,8 @@ def write_c_header(path: Path, tariffs: pd.DataFrame, metadata: dict[str, str]) 
         "",
         "static const double trump2025_tau[NS][NC] = {",
     ]
+    # NC = 3: USA, CHN, ROW; NC = 4: USA, CHN, LTP, HTP (globals.h)
+    lines[-1:-1] = ["#if NC==3"]
     for sector in MODEL_SECTORS:
         chn = rates.get((sector, "CHN"), 0.0)
         row = rates.get((sector, "ROW"), 0.0)
@@ -502,6 +520,19 @@ def write_c_header(path: Path, tariffs: pd.DataFrame, metadata: dict[str, str]) 
         "  {0.0, 0.0, 0.0}, /* SVC */",
         "  {0.0, 0.0, 0.0}  /* CNS */",
         "};",
+        "#else",
+        "static const double trump2025_tau[NS][NC] = {",
+    ])
+    for sector in MODEL_SECTORS:
+        chn = rates.get((sector, "CHN"), 0.0)
+        ltp = rates.get((sector, "LTP"), 0.0)
+        htp = rates.get((sector, "HTP"), 0.0)
+        lines.append(f"  {{0.0, {chn:.12f}, {ltp:.12f}, {htp:.12f}}}, /* {sector} */")
+    lines.extend([
+        "  {0.0, 0.0, 0.0, 0.0}, /* SVC */",
+        "  {0.0, 0.0, 0.0, 0.0}  /* CNS */",
+        "};",
+        "#endif",
         "",
         "#endif",
         "",
@@ -551,6 +582,37 @@ def main() -> None:
         "ROW", row_current, row_baseline, concordance, args.allow_negative
     )
 
+    # four-region split of the non-China partners (LTP, HTP)
+    def periods(code):
+        df = read_import_file(imports_dir / f"{code}data-current.parquet")
+        return (aggregate_period(df, args.target_date, is_year=False),
+                aggregate_period(df, args.baseline_year, is_year=True))
+
+    def combine(frames, sign):
+        """sum of sign[k] * frames[k] by hs10, negatives clipped at zero once at the end"""
+        out = None
+        for f, s in zip(frames, sign):
+            g = f.set_index("hs10")[["imports", "duties"]] * s
+            out = g if out is None else out.add(g, fill_value=0.0)
+        return out.clip(lower=0.0).reset_index()
+
+    part = {iso: periods(code) for code, iso in PARTNER_CODES.items()}
+    eu = periods(EU_CODE)
+    split = {}
+    for k in (0, 1):   # 0: target month, 1: baseline year
+        tot = total_current if k == 0 else total_baseline
+        chn = china_current if k == 0 else china_baseline
+        unlisted = combine([tot, chn, eu[k]] + [part[c][k] for c in PARTNER_CODES.values()],
+                           [1, -1, -1] + [-1] * len(PARTNER_CODES))
+        htp = combine([unlisted] + [part[c][k] for c in HTP_LISTED], [1] * (1 + len(HTP_LISTED)))
+        row = row_current if k == 0 else row_baseline
+        ltp = combine([row, htp], [1, -1])
+        split[k] = (ltp, htp)
+    ltp_rates, ltp_diag = build_source_panel(
+        "LTP", split[0][0], split[1][0], concordance, args.allow_negative)
+    htp_rates, htp_diag = build_source_panel(
+        "HTP", split[0][1], split[1][1], concordance, args.allow_negative)
+
     tariffs = pd.concat([china_rates, row_rates], ignore_index=True)
     tariffs["tariff_percent"] = 100.0 * tariffs["tariff_rate"]
     tariffs = tariffs[[
@@ -559,10 +621,15 @@ def main() -> None:
     ]].sort_values(["source", "model_sector"])
     diagnostics = pd.concat([china_diag, row_diag], ignore_index=True)
 
+    tariffs4 = pd.concat([china_rates, ltp_rates, htp_rates], ignore_index=True)
+    tariffs4["tariff_percent"] = 100.0 * tariffs4["tariff_rate"]
+    tariffs4 = tariffs4[tariffs.columns].sort_values(["source", "model_sector"])
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
     tariffs.to_csv(args.output, index=False)
+    tariffs4.to_csv(args.output_nc4, index=False)
     diagnostics.to_csv(args.diagnostics, index=False)
-    write_c_header(args.header, tariffs, {
+    write_c_header(args.header, pd.concat([tariffs, tariffs4], ignore_index=True), {
         "target_date": args.target_date,
         "baseline_year": args.baseline_year,
         "concordance_method": args.concordance_method,
@@ -573,6 +640,8 @@ def main() -> None:
     print(f"Wrote {args.diagnostics}")
     print(f"Wrote {args.header}")
     print(tariffs.to_string(index=False))
+    print(f"Wrote {args.output_nc4}")
+    print(tariffs4.to_string(index=False))
 
 
 if __name__ == "__main__":

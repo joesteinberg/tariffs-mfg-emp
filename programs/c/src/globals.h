@@ -19,10 +19,30 @@
 #include <gsl/gsl_cdf.h>
 #include <lapacke.h>
 
-#define NC 3 // 3 countries (0=USA, 1=CHN, 2=ROW)
+// Regions. NC = 3: USA, China, rest of world. NC = 4 (make model_nc4, or -DNC=4): USA, China,
+// low-tariff partners, high-tariff partners (non-China partners split at the import-weighted
+// median 2025 tariff increase). In both, the last region holds the residual bonds (market
+// clearing) and "non-China partners" means regions 2..NC-1.
+#ifndef NC
+#define NC 3
+#endif
 #define USA 0
 #define CHN 1
+#if NC==3
 #define ROW 2
+#elif NC==4
+#define LTP 2 // low-tariff partners
+#define HTP 3 // high-tariff partners
+#else
+#error "NC must be 3 or 4"
+#endif
+static const char * const CNAME[NC] = {"usa","chn",
+#if NC==3
+				       "row"
+#else
+				       "ltp","htp"
+#endif
+};
 
 
 #define NS 6 // 4 sectors (0 = upstream-hi, 1 = upstream-hi, 2 = downstreadm-hi, 3 - downstream-lo, 4 = services, 5 = construction)
@@ -60,6 +80,22 @@ uint read_seed;
 uint write_seed;
 uint target_sector_flag;
 uint target_country_flag;
+// -c: 0 China only; 1 all non-China partners; 2 all partners; with NC = 4 also 3 low-tariff
+// partners only and 4 high-tariff partners only. Partner j (1..NC-1) is targeted:
+static inline uint target_partner(uint j)
+{
+  switch(target_country_flag)
+    {
+    case 0: return j==CHN;
+    case 1: return j!=CHN && j!=USA;
+    case 2: return j!=USA;
+#if NC==4
+    case 3: return j==LTP;
+    case 4: return j==HTP;
+#endif
+    default: return 0;
+    }
+}
 uint retaliation_flag;
 uint adjustment_flag;
 uint duration_flag;

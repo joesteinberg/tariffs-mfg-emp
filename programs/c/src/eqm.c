@@ -509,9 +509,8 @@ uint set_initial_eqm_guess()
   eqm * e = &(eee0[0]);
   params * p = &(ppp0[0]);
 
-  bb[0] = p->b0[0];
-  bb[1] = p->b0[1];
-  bb[2] = p->b0[2];
+  for(i=0; i<NC; i++)
+    bb[i] = p->b0[i];
 
   free_solver_mem();
   solver_n = nbgp;  
@@ -627,10 +626,13 @@ uint write_eqm_vars_from(const eqm * e, const params * p, char * fname, uint i, 
   // adds "_ghh", a portfolio adjustment cost (-b) adds "_psib<value>", a horizon other than 100
   // periods (make model_nt200) adds "_nt<NT>", an elasticity vector (-e) adds "_sig_<name>", and
   // an explicit sourcing cost (-z) adds "_phiZ_lo", "_phiZ_hi" or "_pz<value>"
-  char lsuf[128], ntsuf[16] = "";
+  // The 4-region model (make model_nc4) adds "_nc4" first, while the 3-region model is the baseline.
+  char lsuf[128], ntsuf[16] = "", ncsuf[8] = "";
   if(NT != 100)
     snprintf(ntsuf,sizeof(ntsuf),"_nt%d",NT);
-  snprintf(lsuf,sizeof(lsuf),"%s%s%s%s%s",fixl ? "" : "_ghh",psib_suf,ntsuf,sig_suf,phiz_suf);
+  if(NC != 3)
+    snprintf(ncsuf,sizeof(ncsuf),"_nc%d",NC);
+  snprintf(lsuf,sizeof(lsuf),"%s%s%s%s%s%s",ncsuf,fixl ? "" : "_ghh",psib_suf,ntsuf,sig_suf,phiz_suf);
 
   if(scenario==1)
     {
@@ -797,7 +799,7 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
   SET_ALL_V(e->rims_t[t],NC*(NS-1)*NC,0.0);
 
   // bond market clearing
-  e->b_t[t][2] = -(e->b_t[t][0]+e->b_t[t][1]);
+  e->b_t[t][NC-1] = -sum(e->b_t[t],NC-1); // bond market clearing
 
   // compute sector-level aggregates
   for(i=0; i<NC; i++)
@@ -1226,9 +1228,8 @@ uint eval_bgp_conds(const double * myx, double * myf, uint tn)
   eqm * e = scenario==0 ? &(eee0[tn]) : &(eee1[tn]);
   params * p = scenario==0 ? &(ppp0[tn]) : &(ppp1[tn]);
 
-  e->b_t[t][0] = bbgp[0];
-  e->b_t[t][1] = bbgp[1];
-  e->b_t[t][2] = bbgp[2];
+  for(i=0; i<NC; i++)
+    e->b_t[t][i] = bbgp[i];
   unstack_bgp_vars(e,myx);
   if(set_vars(e,p,t,1))
     {
@@ -1336,9 +1337,8 @@ uint eval_bgp_conds(const double * myx, double * myf, uint tn)
 
 uint solve_bgp(double bb[NC])
 {
-  bbgp[0] = bb[0];
-  bbgp[1] = bb[1];
-  bbgp[2] = bb[2];
+  for(uint i=0; i<NC; i++)
+    bbgp[i] = bb[i];
 
   solver_n = nbgp;
 
@@ -1415,9 +1415,8 @@ uint eval_eqm_conds(const double * myx, double * myf, uint tn)
 
   unstack_eqm_vars(e,myx);
 
-  e->b_t[0][0] = p->b0[0];
-  e->b_t[0][1] = p->b0[1];
-  e->b_t[0][2] = p->b0[2];
+  for(i=0; i<NC; i++)
+    e->b_t[0][i] = p->b0[i];
 
   for(i=0; i<NC; i++)
     {

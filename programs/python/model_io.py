@@ -13,6 +13,8 @@ Command-line options (parsed by both scripts):
                 the same suffix. Combines with --ghh and --pz.
   --psib PSI    use the runs solved with a portfolio adjustment cost psi_B = PSI (C option -b PSI;
                 files with the _psib<PSI> suffix, PSI as "%g"); outputs get the same suffix.
+  --nc 4        use the 4-region model's runs (files with the _nc4 suffix, from bin/model_nc4.bin;
+                regions USA, CHN, low-tariff and high-tariff partners). Combines with the others.
   --nt N        horizon of the runs, if not the default 100 periods (files with the _nt<N> suffix,
                 from bin/model_nt200.bin for N = 200). The psi_B runs use --nt 200.
   --partial     allow expected model runs to be missing. Only into a fresh --out directory: the
@@ -26,6 +28,7 @@ GDP/consumption/NFA columns were added) are rejected rather than reinterpreted.
 """
 import argparse
 import os
+import re
 import numpy as np
 import pandas as pd
 
@@ -54,9 +57,10 @@ def parse_args():
     ap.add_argument('--sig', default=None, help='long-run elasticity vector (C option -e)')
     ap.add_argument('--psib', default=None, help='portfolio adjustment cost (C option -b)')
     ap.add_argument('--nt', type=int, default=100, help='horizon (C binary model_nt<N>.bin)')
+    ap.add_argument('--nc', type=int, default=3, choices=[3, 4], help='regions (C binary model_nc4.bin)')
     ap.add_argument('--partial', action='store_true')
     args = ap.parse_args()
-    args.suffix = suffix(args.ghh, args.pz, args.sig, args.psib, args.nt)
+    args.suffix = suffix(args.ghh, args.pz, args.sig, args.psib, args.nt, args.nc)
     args.sens = (args.ghh or args.pz is not None or args.sig is not None or args.psib is not None
                  or args.nt != 100)
     os.makedirs(args.out, exist_ok=True)
@@ -83,15 +87,17 @@ def phiz_value(pz=None):
     return PHIZ_BASE if pz is None else PHIZ[pz] if pz in PHIZ else float(pz)
 
 
-def suffix(ghh=False, pz=None, sig=None, psib=None, nt=100):
-    """File-name suffix used by the C code, in its order: _ghh for GHH labor; _psib<psi> (as "%g")
+def suffix(ghh=False, pz=None, sig=None, psib=None, nt=100, nc=3):
+    """File-name suffix used by the C code, in its order: _nc4 for the 4-region model; _ghh for
+    GHH labor; _psib<psi> (as "%g")
     for -b <psi> > 0; _nt<N> for a horizon N other than 100; _sig_<name> for -e <name>;
     _phiZ_lo / _phiZ_hi for -z lo / hi, _pz<phi> (as "%g") for -z <number>."""
     sz = '' if pz is None else '_phiZ_' + pz if pz in PHIZ else '_pz%g' % float(pz)
     ss = '' if sig in (None, 'base') else '_sig_' + sig
     sb = '' if psib is None or float(psib) == 0 else '_psib%g' % float(psib)
     sn = '' if nt == 100 else '_nt%d' % nt
-    return ('_ghh' if ghh else '') + sb + sn + ss + sz
+    sc = '' if nc == 3 else '_nc%d' % nc
+    return sc + ('_ghh' if ghh else '') + sb + sn + ss + sz
 
 
 def _record(args, line):
@@ -121,20 +127,23 @@ def process_results(models):
     """Add derived columns. Raw series are left untouched; `<col>_y` columns hold nx series
     normalized by the same period's nominal GDP."""
     base = models[0]
+    # trading partners in this file: 1, 2 (3 regions) or 1, 2, 3 (4 regions) for the US
+    partners = sorted(int(mt.group(1)) for c in base.columns for mt in [re.fullmatch(r'nx(\d+)', c)] if mt)
+    psum = lambda m, fmt: sum(m[fmt % j] for j in partners)
     for m in models:
-        m['nx'] = m['nx1'] + m['nx2']
-        m['rer'] = m['rer1'] * base['ex1'].values[0] + m['rer2'] * base['ex2'].values[0]
+        m['nx'] = psum(m, 'nx%d')
+        m['rer'] = sum(m['rer%d' % j] * base['ex%d' % j].values[0] for j in partners)
         m['lg'] = m['l0'] + m['l1'] + m['l2'] + m['l3']
         m['lgc'] = m['lg'] + m['l5']          # goods + construction
         for s in range(5):
             for v in ['nxs', 'exs', 'ims', 'rexs', 'rims']:
-                m['%s%d' % (v, s)] = m['%s%d-1' % (v, s)] + m['%s%d-2' % (v, s)]
+                m['%s%d' % (v, s)] = psum(m, '%s%d-%%d' % (v, s))
         m['img'] = m['ims0'] + m['ims1'] + m['ims2'] + m['ims3']
         m['exg'] = m['exs0'] + m['exs1'] + m['exs2'] + m['exs3']
         m['nxg'] = m['nxs0'] + m['nxs1'] + m['nxs2'] + m['nxs3']
         m['nxsvc'] = m['nxs4']
-        m['rex'] = m['rex1'] + m['rex2']
-        m['rim'] = m['rim1'] + m['rim2']
+        m['rex'] = psum(m, 'rex%d')
+        m['rim'] = psum(m, 'rim%d')
         m['rexg'] = m['rexs0'] + m['rexs1'] + m['rexs2'] + m['rexs3']
         m['rimg'] = m['rims0'] + m['rims1'] + m['rims2'] + m['rims3']
         m['nc'] = m['pc_exact'] * m['cagg']                # nominal consumption = sum_s p_s c_s

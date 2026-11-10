@@ -1,7 +1,33 @@
+"""Builds the model's input-output matrix (output/iomat.txt) and the data figures and tables.
+
+usage: python3 icio.py          3 regions: USA, CHN, ROW (output/iomat.txt, figures, tables)
+       python3 icio.py --nc4    4 regions: USA, CHN, low-tariff partners (LTP), high-tariff partners
+                                (HTP); writes only output/iomat_nc4.{txt,tex}, read by the C model
+                                built with NC = 4. The sector clusters and their trade elasticities
+                                are always computed on the 3-region table, so they are identical in
+                                the two versions.
+"""
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
-import pandas as pd
+
+NC4 = '--nc4' in sys.argv[1:]
+
+def dout(fname):
+    """Path for a 3-region data output; discarded in the --nc4 run, which writes only iomat_nc4."""
+    import os
+    return os.devnull if NC4 else 'output/' + fname
+
+# High-tariff partners (NC = 4): non-China partners whose import-weighted 2025 goods-tariff
+# increase is above the import-weighted median partner unit (the EU, 8.4%; units: EU27 as one,
+# the tariff tracker's unlisted residual as one). The unlisted residual (9.6%) is above the median,
+# so every ICIO country without its own tracker series, including the ICIO 'ROW' aggregate, is
+# high-tariff. All other non-China partners (CAN, MEX, EU27, GBR, AUS, CHE, TWN, ...) are low-tariff.
+HTP = ['BRA', 'IDN', 'IND', 'JPN', 'KOR', 'MYS', 'THA', 'VNM',                       # listed
+       'ARG', 'BGD', 'BLR', 'BRN', 'CIV', 'CMR', 'CRI', 'EGY', 'HKG', 'ISL', 'JOR',  # unlisted
+       'KAZ', 'KHM', 'LAO', 'MAR', 'MMR', 'NGA', 'NOR', 'NZL', 'PAK', 'PER', 'PHL',
+       'ROW', 'SEN', 'TUN', 'TUR', 'UKR', 'ZAF']
 
 import locale
 locale.setlocale(locale.LC_ALL,'en_US.utf8')
@@ -263,8 +289,8 @@ ind_tab = ind_tab.sort_values(['cluster', 'weight'], ascending=[True, False])
 ind_tab[['row_sector', 'name', 'cluster', 'U', 'elast_CP', 'trade_usdmm', 'weight']].round(
     {'U': 4, 'elast_CP': 2, 'trade_usdmm': 1, 'weight': 4}).rename(
     columns={'row_sector': 'icio_industry', 'U': 'upstreamness', 'elast_CP': 'theta_CP'}).to_csv(
-    'output/industry_elasts.csv', index=False)
-with open('output/industry_elasts.tex', 'w') as file:
+    dout('industry_elasts.csv'), index=False)
+with open(dout('industry_elasts.tex'), 'w') as file:
     file.write('\\begin{tabular}{llrrr}\n\\toprule\n')
     file.write('Sector & Industry & Upstreamness & $\\theta^{CP}$ & Weight (\\%) \\\\\n')
     for c in ['Oil', 'Steel', 'Toys', 'Cars']:
@@ -286,6 +312,22 @@ agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']],how='lef
 agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']].rename(columns={'row_sector':'col_sector','row_sector3':'col_sector3'}),how='left',on='col_sector')
 agged.loc[agged.row_sector3.isnull(),'row_sector3'] = agged.loc[agged.row_sector3.isnull(),'row_sector']
 agged.loc[agged.col_sector3.isnull(),'col_sector3'] = agged.loc[agged.col_sector3.isnull(),'col_sector']
+
+if NC4:
+    # re-aggregate the country-level table into 4 regions, keeping the sector mapping above
+    def which_region4(country):
+        if country in ('TOT', 'USA', 'CHN'):
+            return country
+        return 'HTP' if country in HTP else 'LTP'
+    m4 = melted.copy()
+    m4['row_region'] = m4.row_country.apply(which_region4)
+    m4['col_region'] = m4.col_country.apply(which_region4)
+    agged = m4.groupby(['row_region','row_sector','col_use','col_region','col_sector'])['value'].sum().reset_index()
+    agged = agged.sort_values(by=['row_region','row_sector','col_use','col_region','col_sector'])
+    agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']],how='left',on='row_sector')
+    agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']].rename(columns={'row_sector':'col_sector','row_sector3':'col_sector3'}),how='left',on='col_sector')
+    agged.loc[agged.row_sector3.isnull(),'row_sector3'] = agged.loc[agged.row_sector3.isnull(),'row_sector']
+    agged.loc[agged.col_sector3.isnull(),'col_sector3'] = agged.loc[agged.col_sector3.isnull(),'col_sector']
 
 #############################################################################
 print('\nComputing sectoral employment shares...')
@@ -314,7 +356,7 @@ print(lc2)
 print('\nCreating sector summary figure + table...')
 
 # write table with names
-with open('output/sectors.tex','w') as file:
+with open(dout('sectors.tex'),'w') as file:
         
     file.write('\\begin{tabular}{lp{6cm}cccc}')
     file.write('\\toprule\n')
@@ -409,7 +451,7 @@ ax.set_yticklabels([ '%0.0f'%(np.exp(y)) for y in yl])
 ax.set_xlabel('Upstreamness')
 ax.set_ylabel('Trade elasticity')
 fig.tight_layout()
-plt.savefig('output/fig_data_upstream_vs_elast.pdf')
+plt.savefig(dout('fig_data_upstream_vs_elast.pdf'), format='pdf')
 
 #############################################################################
 print('\nAggregating IO matrix across regions and sectors...')
@@ -428,6 +470,9 @@ agged2.loc[agged2.row_region=='ROW','row_region'] = '3-ROW'
 agged2.loc[agged2.col_region=='USA','col_region'] = '1-USA'
 agged2.loc[agged2.col_region=='CHN','col_region'] = '2-CHN'
 agged2.loc[agged2.col_region=='ROW','col_region'] = '3-ROW'
+for c, lab in [('LTP', '3-LTP'), ('HTP', '4-HTP')]:
+    agged2.loc[agged2.row_region==c,'row_region'] = lab
+    agged2.loc[agged2.col_region==c,'col_region'] = lab
 
 agged2.loc[agged2.row_sector=='UP-HI','row_sector'] = '1-UPSTREAM-HI'
 agged2.loc[agged2.row_sector=='UP-LO','row_sector'] = '2-UPSTREAM-LO'
@@ -585,7 +630,7 @@ iomat2 = ras(iomat,rowsums,colsums) # run RAS
 #############################################################################
 print('Writing output...')
 
-countries = ['USA','CHN','ROW']
+countries = ['USA','CHN','LTP','HTP'] if NC4 else ['USA','CHN','ROW']
 sectors = ['$G_{UH}$','$G_{UL}$','$G_{DH}$','$G_{DL}$','$S$','$H$']
 
 def write_iomat_csv(iomat,fname):
@@ -728,6 +773,10 @@ def write_iomat_latex(iomat,rowsums,colsums,fname):
         #file.write('\\end{landscape}\n')
 
 
+if NC4:
+    write_iomat_csv(iomat2,'output/iomat_nc4')
+    write_iomat_latex(iomat2,rowsums,colsums,'output/iomat_nc4')
+    sys.exit(0)   # the data figures and tables below are written by the 3-region run
 write_iomat_csv(iomat2,'output/iomat')
 write_iomat_latex(iomat2,rowsums,colsums,'output/iomat')
 
