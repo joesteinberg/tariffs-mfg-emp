@@ -626,11 +626,11 @@ uint write_eqm_vars_from(const eqm * e, const params * p, char * fname, uint i, 
   // adds "_ghh", a portfolio adjustment cost (-b) adds "_psib<value>", a horizon other than 100
   // periods (make model_nt200) adds "_nt<NT>", an elasticity vector (-e) adds "_sig_<name>", and
   // an explicit sourcing cost (-z) adds "_phiZ_lo", "_phiZ_hi" or "_pz<value>"
-  // The 4-region model (make model_nc4) adds "_nc4" first, while the 3-region model is the baseline.
+  // The 3-region model (make model_nc3) adds "_nc3" first; the 4-region baseline has no suffix.
   char lsuf[128], ntsuf[16] = "", ncsuf[8] = "";
   if(NT != 100)
     snprintf(ntsuf,sizeof(ntsuf),"_nt%d",NT);
-  if(NC != 3)
+  if(NC != 4)
     snprintf(ncsuf,sizeof(ncsuf),"_nc%d",NC);
   snprintf(lsuf,sizeof(lsuf),"%s%s%s%s%s%s",ncsuf,fixl ? "" : "_ghh",psib_suf,ntsuf,sig_suf,phiz_suf);
 

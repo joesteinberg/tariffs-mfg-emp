@@ -19,12 +19,12 @@
 #include <gsl/gsl_cdf.h>
 #include <lapacke.h>
 
-// Regions. NC = 3: USA, China, rest of world. NC = 4 (make model_nc4, or -DNC=4): USA, China,
-// low-tariff partners, high-tariff partners (non-China partners split at the import-weighted
-// median 2025 tariff increase). In both, the last region holds the residual bonds (market
-// clearing) and "non-China partners" means regions 2..NC-1.
+// Regions. NC = 4 (baseline): USA, China, low-tariff partners, high-tariff partners (non-China
+// partners split at the import-weighted median 2025 tariff increase). NC = 3 (make model_nc3, or
+// -DNC=3; the original version, outputs _nc3): USA, China, rest of world. In both, the last region
+// holds the residual bonds (market clearing) and "non-China partners" means regions 2..NC-1.
 #ifndef NC
-#define NC 3
+#define NC 4
 #endif
 #define USA 0
 #define CHN 1
@@ -126,7 +126,7 @@ char phiz_suf[32]; // output-name suffix when -z is given: "_phiZ_lo", "_phiZ_hi
 // Output suffix "_sig_<name>". SIG_PHIZ is phi_Z re-targeted (calibrate_phiz.py --sig NAME) so the
 // impact Armington elasticity in the symmetric experiment equals the baseline's 0.4812; 0 means not
 // yet calibrated, in which case -z must be given.
-//   cp:    Caliendo-Parro (2015) theta + 1, trade-weighted by cluster (icio.py)
+//   cp:    Caliendo-Parro (2015) theta + 1, trade-weighted by cluster (icio.py, 4-region weights)
 //   krs:   Kehoe-Ruhl-Steinberg (2018): 3 for intermediates, 2 for final goods, every sector
 //   half:  baseline with half the dispersion: sbar*(s/sbar)^0.5, rescaled to the baseline
 //          trade-weighted mean sbar = 3.25 (weights as in the `ae` statistic)
@@ -135,7 +135,7 @@ char phiz_suf[32]; // output-name suffix when -z is given: "_phiZ_lo", "_phiZ_hi
 static const char * const SIG_NAMES[NSIGV] = {"base","cp","krs","half","u2","umean","u5"};
 static const double SIG_INT[NSIGV][4] = {
   {8.0, 2.0, 4.0, 1.05},
-  {18.62, 3.85, 12.88, 3.17},
+  {20.13, 3.87, 12.82, 3.14},
   {3.0, 3.0, 3.0, 3.0},
   {5.50, 2.75, 3.89, 1.99},
   {2.0, 2.0, 2.0, 2.0},
@@ -143,12 +143,14 @@ static const double SIG_INT[NSIGV][4] = {
   {5.0, 5.0, 5.0, 5.0}};
 static const double SIG_FIN[NSIGV][4] = {
   {8.0, 2.0, 4.0, 1.05},
-  {18.62, 3.85, 12.88, 3.17},
+  {20.13, 3.87, 12.82, 3.14},
   {2.0, 2.0, 2.0, 2.0},
   {5.50, 2.75, 3.89, 1.99},
   {2.0, 2.0, 2.0, 2.0},
   {3.25, 3.25, 3.25, 3.25},
   {5.0, 5.0, 5.0, 5.0}};
+// NOTE: SIG_PHIZ (and PHIZ_LO / PHIZ_HI above) were calibrated in the 3-region model; re-target them
+// with calibrate_phiz.py for the 4-region baseline before the sensitivity runs.
 static const double SIG_PHIZ[NSIGV] = {2.9, 4.74, 2.966, 3.465, 2.488, 3.71, 4.745};
 uint sig_vec; // 0 = baseline (8/2/4/1.05)
 uint phiz_given; // 1 if -z was given (overrides the vector's re-targeted phi_Z)

@@ -52,7 +52,7 @@ PARTNER_CODES = {
 }   # listed non-EU partners (EU members are covered by the EU aggregate file, 0003)
 HTP_LISTED = ["BRA", "IDN", "IND", "JPN", "KOR", "MYS", "THA", "VNM"]
 EU_CODE = "0003"
-DEFAULT_OUTPUT_NC4 = ROOT / "programs" / "python" / "output" / "trump2025_tariffs_nc4.csv"
+DEFAULT_OUTPUT_NC3 = ROOT / "programs" / "python" / "output" / "trump2025_tariffs_nc3.csv"
 MODEL_SECTOR_NAMES = {
     "UPH": "Oil",
     "UPL": "Steel",
@@ -192,7 +192,7 @@ def read_args() -> argparse.Namespace:
     parser.add_argument("--target-date", default="2025-12")
     parser.add_argument("--baseline-year", default="2024")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--output-nc4", type=Path, default=DEFAULT_OUTPUT_NC4)
+    parser.add_argument("--output-nc3", type=Path, default=DEFAULT_OUTPUT_NC3)
     parser.add_argument("--diagnostics", type=Path, default=DEFAULT_DIAGNOSTICS)
     parser.add_argument("--header", type=Path, default=DEFAULT_HEADER)
     parser.add_argument("--allow-negative", action="store_true",
@@ -619,15 +619,16 @@ def main() -> None:
         "source", "model_sector", "sector_name", "tariff_rate", "tariff_percent",
         "weight_imports", "target_imports", "hs10_count",
     ]].sort_values(["source", "model_sector"])
-    diagnostics = pd.concat([china_diag, row_diag], ignore_index=True)
+    diagnostics = pd.concat([china_diag, row_diag, ltp_diag, htp_diag], ignore_index=True)
 
     tariffs4 = pd.concat([china_rates, ltp_rates, htp_rates], ignore_index=True)
     tariffs4["tariff_percent"] = 100.0 * tariffs4["tariff_rate"]
     tariffs4 = tariffs4[tariffs.columns].sort_values(["source", "model_sector"])
 
+    # --output: the 4-region baseline (CHN, LTP, HTP); --output-nc3: the 3-region version (CHN, ROW)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    tariffs.to_csv(args.output, index=False)
-    tariffs4.to_csv(args.output_nc4, index=False)
+    tariffs4.to_csv(args.output, index=False)
+    tariffs.to_csv(args.output_nc3, index=False)
     diagnostics.to_csv(args.diagnostics, index=False)
     write_c_header(args.header, pd.concat([tariffs, tariffs4], ignore_index=True), {
         "target_date": args.target_date,
@@ -636,11 +637,10 @@ def main() -> None:
         "twt_commit": git_commit(args.trade_war_tracker_dir),
     })
 
-    print(f"Wrote {args.output}")
+    print(f"Wrote {args.output} (4 regions) and {args.output_nc3} (3 regions)")
     print(f"Wrote {args.diagnostics}")
     print(f"Wrote {args.header}")
     print(tariffs.to_string(index=False))
-    print(f"Wrote {args.output_nc4}")
     print(tariffs4.to_string(index=False))
 
 

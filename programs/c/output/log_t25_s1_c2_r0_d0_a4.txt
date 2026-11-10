@@ -11,7 +11,7 @@ Setting up environment...
 Model scenario:
 -Tariff rate: 25pct
 -Targeted sector: Upstream/lo only
--Targeted country: China + rest of world
+-Targeted country: all partners
 -Retaliation: No
 -Duration: Permanent
 -Adjustment costs: Labor + capital + supply chains
@@ -21,25 +21,25 @@ Parallel processing using 128 OMP threads
 
 Solving for free-trade benchmark...
 
-	Initializing solver on 72-variable system...
+	Initializing solver on 96-variable system...
 		Initialization complete. Time = 0.00
-		1, 0 secs	max = 4.83e-13, 68	min = -2.27e-13, 1
-	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
+		1, 0 secs	max = 6.54e-13, 3	min = -3.69e-13, 1
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 3.27516e-12
 
-	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 7.00
-		1, 23 secs	max = 9.89e-12, 5138	min = -1.40e-11, 19551
-	Finished: success. Time = 33.00, iter = 1, sum |f| = 1.16485e-09
+	Initializing solver on 30072-variable system...
+		Initialization complete. Time = 55.00
+		1, 208 secs	max = 7.36e-12, 3079	min = -1.20e-11, 1879
+	Finished: success. Time = 271.00, iter = 1, sum |f| = 1.25865e-09
 
 Solving for equilibrium with tariffs...
 
-	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 6.00
-		1, 24 secs	max = 3.47e-02, 19333	min = -6.03e-02, 19306
-		2, 24 secs	max = 6.81e-04, 19493	min = -3.14e-03, 23
-		3, 23 secs	max = 4.16e-06, 23	min = -3.41e-06, 19323
-		4, 24 secs	max = 5.61e-10, 19365	min = -3.96e-09, 19551
-	Finished: success. Time = 104.00, iter = 4, sum |f| = 1.11133e-08
+	Initializing solver on 30072-variable system...
+		Initialization complete. Time = 54.00
+		1, 205 secs	max = 3.49e-02, 29733	min = -6.04e-02, 29701
+		2, 204 secs	max = 7.84e-04, 29918	min = -3.19e-03, 28
+		3, 203 secs	max = 4.15e-06, 28	min = -3.38e-06, 29721
+		4, 204 secs	max = 3.53e-10, 29770	min = -3.22e-09, 30052
+	Finished: success. Time = 877.00, iter = 4, sum |f| = 1.5024e-08
 Short run trade elasticities:
 Up-lo: 0.3949
 

@@ -21,28 +21,28 @@ Parallel processing using 128 OMP threads
 
 Solving for free-trade benchmark...
 
-	Initializing solver on 72-variable system...
+	Initializing solver on 96-variable system...
 		Initialization complete. Time = 0.00
-		1, 0 secs	max = 4.83e-13, 68	min = -2.27e-13, 1
-	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
+		1, 1 secs	max = 6.54e-13, 3	min = -3.69e-13, 1
+	Finished: success. Time = 1.00, iter = 1, sum |f| = 3.27516e-12
 
-	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 7.00
-		1, 24 secs	max = 9.89e-12, 5138	min = -1.40e-11, 19551
-	Finished: success. Time = 33.00, iter = 1, sum |f| = 1.16485e-09
+	Initializing solver on 30072-variable system...
+		Initialization complete. Time = 83.00
+		1, 211 secs	max = 7.36e-12, 3079	min = -1.20e-11, 1879
+	Finished: success. Time = 323.00, iter = 1, sum |f| = 1.25865e-09
 
 Solving for equilibrium with tariffs...
 
-	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 7.00
-		1, 23 secs	max = 2.43e-01, 19529	min = -2.46e-01, 19502
-		2, 24 secs	max = 3.01e-02, 8582	min = -3.23e-02, 7801
-		3, 23 secs	max = 2.53e-04, 19418	min = -8.54e-04, 19435
-		4, 23 secs	max = 1.11e-07, 19365	min = -2.45e-07, 19435
-		5, 24 secs	max = 2.22e-11, 19551	min = -9.54e-12, 19307
-	Finished: success. Time = 127.00, iter = 5, sum |f| = 7.83019e-10
+	Initializing solver on 30072-variable system...
+		Initialization complete. Time = 23.00
+		1, 236 secs	max = 2.43e-01, 30030	min = -2.46e-01, 30002
+		2, 205 secs	max = 3.01e-02, 12302	min = -3.22e-02, 13801
+		3, 139 secs	max = 2.52e-04, 29831	min = -8.52e-04, 29851
+		4, 181 secs	max = 1.00e-07, 29770	min = -2.45e-07, 29851
+		5, 158 secs	max = 3.03e-11, 27903	min = -1.30e-11, 29703
+	Finished: success. Time = 959.00, iter = 5, sum |f| = 1.50698e-09
 Short run trade elasticities:
-Dn-hi: 0.6560
+Dn-hi: 0.6558
 
 ----------------------------------------------------------------------
 

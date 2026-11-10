@@ -13,8 +13,9 @@ Command-line options (parsed by both scripts):
                 the same suffix. Combines with --ghh and --pz.
   --psib PSI    use the runs solved with a portfolio adjustment cost psi_B = PSI (C option -b PSI;
                 files with the _psib<PSI> suffix, PSI as "%g"); outputs get the same suffix.
-  --nc 4        use the 4-region model's runs (files with the _nc4 suffix, from bin/model_nc4.bin;
-                regions USA, CHN, low-tariff and high-tariff partners). Combines with the others.
+  --nc 3        use the original 3-region model's runs (USA, CHN, rest of world; files with the _nc3
+                suffix, from bin/model_nc3.bin). The default is the 4-region baseline (USA, CHN,
+                low-tariff and high-tariff partners). Combines with the others.
   --nt N        horizon of the runs, if not the default 100 periods (files with the _nt<N> suffix,
                 from bin/model_nt200.bin for N = 200). The psi_B runs use --nt 200.
   --partial     allow expected model runs to be missing. Only into a fresh --out directory: the
@@ -57,12 +58,12 @@ def parse_args():
     ap.add_argument('--sig', default=None, help='long-run elasticity vector (C option -e)')
     ap.add_argument('--psib', default=None, help='portfolio adjustment cost (C option -b)')
     ap.add_argument('--nt', type=int, default=100, help='horizon (C binary model_nt<N>.bin)')
-    ap.add_argument('--nc', type=int, default=3, choices=[3, 4], help='regions (C binary model_nc4.bin)')
+    ap.add_argument('--nc', type=int, default=4, choices=[3, 4], help='regions (3: C binary model_nc3.bin)')
     ap.add_argument('--partial', action='store_true')
     args = ap.parse_args()
     args.suffix = suffix(args.ghh, args.pz, args.sig, args.psib, args.nt, args.nc)
     args.sens = (args.ghh or args.pz is not None or args.sig is not None or args.psib is not None
-                 or args.nt != 100)
+                 or args.nt != 100 or args.nc != 4)
     os.makedirs(args.out, exist_ok=True)
     if args.partial:
         manifest = os.path.join(args.out, MANIFEST)
@@ -87,8 +88,8 @@ def phiz_value(pz=None):
     return PHIZ_BASE if pz is None else PHIZ[pz] if pz in PHIZ else float(pz)
 
 
-def suffix(ghh=False, pz=None, sig=None, psib=None, nt=100, nc=3):
-    """File-name suffix used by the C code, in its order: _nc4 for the 4-region model; _ghh for
+def suffix(ghh=False, pz=None, sig=None, psib=None, nt=100, nc=4):
+    """File-name suffix used by the C code, in its order: _nc3 for the 3-region model; _ghh for
     GHH labor; _psib<psi> (as "%g")
     for -b <psi> > 0; _nt<N> for a horizon N other than 100; _sig_<name> for -e <name>;
     _phiZ_lo / _phiZ_hi for -z lo / hi, _pz<phi> (as "%g") for -z <number>."""
@@ -96,7 +97,7 @@ def suffix(ghh=False, pz=None, sig=None, psib=None, nt=100, nc=3):
     ss = '' if sig in (None, 'base') else '_sig_' + sig
     sb = '' if psib is None or float(psib) == 0 else '_psib%g' % float(psib)
     sn = '' if nt == 100 else '_nt%d' % nt
-    sc = '' if nc == 3 else '_nc%d' % nc
+    sc = '' if nc == 4 else '_nc%d' % nc
     return sc + ('_ghh' if ghh else '') + sb + sn + ss + sz
 
 

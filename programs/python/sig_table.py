@@ -33,7 +33,7 @@ from model_io import _load_pair, suffix, SCEN_CODES, recovery_year, conv_year
 
 VECTORS = {   # name: (label, intermediate, final), as in globals.h
     'base': ('Baseline', [8, 2, 4, 1.05], [8, 2, 4, 1.05]),
-    'cp': ('Caliendo--Parro', [18.62, 3.85, 12.88, 3.17], [18.62, 3.85, 12.88, 3.17]),
+    'cp': ('Caliendo--Parro', [20.13, 3.87, 12.82, 3.14], [20.13, 3.87, 12.82, 3.14]),
     'krs': ('KRS (3 int., 2 final)', [3] * 4, [2] * 4),
     'half': ('Half dispersion', [5.50, 2.75, 3.89, 1.99], [5.50, 2.75, 3.89, 1.99]),
     'u2': ('Uniform 2', [2] * 4, [2] * 4),

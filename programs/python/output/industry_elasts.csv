@@ -1,23 +1,23 @@
 icio_industry,name,cluster,upstreamness,theta_CP,trade_usdmm,weight
-B05_06,Mining (energy),Oil,3.4916,13.53,419426.6,0.353
-B07_08,Mining (non-energy),Oil,3.5438,13.53,195719.8,0.1647
-A01_02,Agriculture,Oil,2.4908,9.11,164635.8,0.1386
-C25,Fabricated metals,Oil,2.5669,6.99,162985.1,0.1372
-C19,Refined petroleum,Oil,2.8011,64.85,127364.4,0.1072
-C17_18,Paper products,Oil,2.9098,16.52,70444.9,0.0593
-C16,Wood products,Oil,2.7963,11.5,43783.5,0.0369
-B09,Mining support,Oil,3.4129,13.53,3733.5,0.0031
-C20,Chemicals,Steel,3.2229,3.13,399397.2,0.4457
-C24,Basic metals,Steel,3.3653,3.28,256975.6,0.2868
-C22,Rubber + plastics,Steel,2.8467,1.67,160505.9,0.1791
-C23,Minerals,Steel,2.5377,2.41,79242.2,0.0884
-C26,Electronics,Toys,2.2082,12.95,1089672.5,0.6005
-C13T15,Textiles,Toys,2.1848,8.1,383564.8,0.2114
-C27,Electrical equipment,Toys,2.2286,12.91,325040.5,0.1791
-A03,Fishing,Toys,2.1653,9.11,16425.2,0.0091
-C28,Machinery + equipment,Cars,2.0038,1.45,413819.2,0.2497
-C29,Motor vehicles,Cars,1.8049,1.84,403515.3,0.2435
-C31T33,Other mfg,Cars,1.9431,3.98,252746.7,0.1525
-C10T12,Food + beverages,Cars,1.8913,2.62,214194.8,0.1293
-C21,Pharmaceuticals,Cars,2.0415,3.13,195115.9,0.1178
-C30,Other trans. equip.,Cars,1.8651,0.39,177621.4,0.1072
+B05_06,Mining (energy),Oil,3.4541,13.53,728559.4,0.3852
+A01_02,Agriculture,Oil,2.4128,9.11,258296.3,0.1366
+B07_08,Mining (non-energy),Oil,3.6065,13.53,255045.2,0.1348
+C19,Refined petroleum,Oil,2.7466,64.85,253737.6,0.1342
+C25,Fabricated metals,Oil,2.5715,6.99,224718.8,0.1188
+C17_18,Paper products,Oil,2.8819,16.52,100655.5,0.0532
+C16,Wood products,Oil,2.7863,11.5,62352.0,0.033
+B09,Mining support,Oil,3.4539,13.53,7998.9,0.0042
+C20,Chemicals,Steel,3.1801,3.13,560376.5,0.4324
+C24,Basic metals,Steel,3.3729,3.28,411315.2,0.3174
+C22,Rubber + plastics,Steel,2.8131,1.67,219550.0,0.1694
+C23,Minerals,Steel,2.5477,2.41,104634.8,0.0807
+C26,Electronics,Toys,2.2362,12.95,1285054.3,0.5835
+C13T15,Textiles,Toys,2.0706,8.1,491673.9,0.2232
+C27,Electrical equipment,Toys,2.2284,12.91,403709.8,0.1833
+A03,Fishing,Toys,2.0966,9.11,22038.3,0.01
+C29,Motor vehicles,Cars,1.8057,1.84,588630.8,0.2464
+C28,Machinery + equipment,Cars,1.997,1.45,588041.4,0.2461
+C10T12,Food + beverages,Cars,1.8386,2.62,383756.0,0.1606
+C31T33,Other mfg,Cars,1.9829,3.98,322523.4,0.135
+C21,Pharmaceuticals,Cars,2.0566,3.13,253648.1,0.1062
+C30,Other trans. equip.,Cars,1.8404,0.39,252481.5,0.1057

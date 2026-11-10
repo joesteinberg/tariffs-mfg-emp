@@ -73,7 +73,6 @@ df_m = [load_results(t,s,2,r,d,a,args) for s in [10,11,13,14,16]]
 df_f = [load_results(t,s,2,r,d,a,args) for s in [20,21,23,24,26]]
 
 df_all_ret = load_results(t,6,2,1,0,4,args)
-df_all_trans = load_results(t,6,2,0,1,4,args)
 df_all_noadj = load_results(t,6,2,0,0,0,args)
 df_trump2025 = load_results_trump2025(0,0,4,args)
 check_inputs(args, 'results.py')
@@ -358,7 +357,6 @@ def plot_goods_labor(df, fname, ylabel='change (percent total goods emp)'):
 plot_goods_labor(df_all[4], 'fig_dyn_labor_goods_atb_resize', 'change in sectoral emp (percent total goods emp)')
 plot_goods_labor(df_all_ret, 'fig_dyn_labor_goods_atb_retaliation')   # ATB tariffs w/ retaliation
 plot_goods_labor(df_all_noadj, 'fig_dyn_labor_goods_atb_noadj')       # ATB tariffs w/ no adj costs
-plot_goods_labor(df_all_trans, 'fig_dyn_labor_goods_atb_temp')        # ATB tariffs w/ reversal
 plot_goods_labor(df_trump2025, 'fig_dyn_labor_goods_trump2025')       # Trump 2025 tariff matrix
 
 plt.close('all')

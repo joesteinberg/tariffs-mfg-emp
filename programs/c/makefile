@@ -26,20 +26,20 @@ $(ODIR200)/%.o: src/%.c $(DEPS)
 model_nt200: $(OBJ200)
 	$(CC) -o $(EXDIR)/$@.bin $^ $(CFLAGS) $(LDFLAGS)
 
-# 4 regions (USA, CHN, low-tariff, high-tariff partners): bin/model_nc4.bin, reads
-# ../python/output/iomat_nc4.txt (icio.py --nc4); outputs get _nc4
-ODIRNC4 = src/obj_nc4
-OBJNC4 = $(patsubst %,$(ODIRNC4)/%,$(_OBJ))
+# 3 regions (USA, CHN, rest of world; the original version): bin/model_nc3.bin, reads
+# ../python/output/iomat_nc3.txt (icio.py); outputs get _nc3
+ODIRNC3 = src/obj_nc3
+OBJNC3 = $(patsubst %,$(ODIRNC3)/%,$(_OBJ))
 
-$(ODIRNC4)/%.o: src/%.c $(DEPS)
-	@mkdir -p $(ODIRNC4)
-	$(CC) -c -o $@ $< $(CFLAGS) -DNC=4
+$(ODIRNC3)/%.o: src/%.c $(DEPS)
+	@mkdir -p $(ODIRNC3)
+	$(CC) -c -o $@ $< $(CFLAGS) -DNC=3
 
-model_nc4: $(OBJNC4)
+model_nc3: $(OBJNC3)
 	$(CC) -o $(EXDIR)/$@.bin $^ $(CFLAGS) $(LDFLAGS)
 
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o $(ODIR200)/*.o $(ODIRNC4)/*.o
+	rm -f $(ODIR)/*.o $(ODIR200)/*.o $(ODIRNC3)/*.o
 	rm -f $(EXDIR)/*

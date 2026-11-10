@@ -1,23 +1,26 @@
 """Builds the model's input-output matrix (output/iomat.txt) and the data figures and tables.
 
-usage: python3 icio.py          3 regions: USA, CHN, ROW (output/iomat.txt, figures, tables)
-       python3 icio.py --nc4    4 regions: USA, CHN, low-tariff partners (LTP), high-tariff partners
-                                (HTP); writes only output/iomat_nc4.{txt,tex}, read by the C model
-                                built with NC = 4. The sector clusters and their trade elasticities
-                                are always computed on the 3-region table, so they are identical in
-                                the two versions.
+usage: python3 icio.py          the model's IO matrix output/iomat.{txt,tex} (4 regions: USA, CHN,
+                                low-tariff partners LTP, high-tariff partners HTP; read by the
+                                baseline C model) and all data figures and tables
+       python3 icio.py --nc3    only the 3-region IO matrix output/iomat_nc3.{txt,tex} (USA, CHN,
+                                ROW; read by bin/model_nc3.bin, the original version)
+Everything, including the sector clustering and the trade weights behind each sector's average
+Caliendo-Parro elasticity, uses the aggregation of the run. (The clusters are identical under the 3-
+and 4-region aggregations; only the trade weights differ, e.g. "Oil" averages 19.1 with 4 regions
+and 17.6 with 3, because trade between the two non-China blocs counts in the weights.)
 """
 import sys
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
 
-NC4 = '--nc4' in sys.argv[1:]
+NC4 = '--nc3' not in sys.argv[1:]   # 4 regions unless --nc3
 
 def dout(fname):
-    """Path for a 3-region data output; discarded in the --nc4 run, which writes only iomat_nc4."""
+    """Path for a data output; discarded in the --nc3 run, which writes only iomat_nc3."""
     import os
-    return os.devnull if NC4 else 'output/' + fname
+    return 'output/' + fname if NC4 else os.devnull
 
 # High-tariff partners (NC = 4): non-China partners whose import-weighted 2025 goods-tariff
 # increase is above the import-weighted median partner unit (the EU, 8.4%; units: EU27 as one,
@@ -106,8 +109,9 @@ regions = ['USA','CHN']
 def which_region(country):
     if country=='TOT' or country in regions:
         return country
-    else:
+    if not NC4:
         return 'ROW'
+    return 'HTP' if country in HTP else 'LTP'
 
 melted['row_region'] = melted.row_country.apply(which_region)
 melted['col_region'] = melted.col_country.apply(which_region)
@@ -312,22 +316,6 @@ agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']],how='lef
 agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']].rename(columns={'row_sector':'col_sector','row_sector3':'col_sector3'}),how='left',on='col_sector')
 agged.loc[agged.row_sector3.isnull(),'row_sector3'] = agged.loc[agged.row_sector3.isnull(),'row_sector']
 agged.loc[agged.col_sector3.isnull(),'col_sector3'] = agged.loc[agged.col_sector3.isnull(),'col_sector']
-
-if NC4:
-    # re-aggregate the country-level table into 4 regions, keeping the sector mapping above
-    def which_region4(country):
-        if country in ('TOT', 'USA', 'CHN'):
-            return country
-        return 'HTP' if country in HTP else 'LTP'
-    m4 = melted.copy()
-    m4['row_region'] = m4.row_country.apply(which_region4)
-    m4['col_region'] = m4.col_country.apply(which_region4)
-    agged = m4.groupby(['row_region','row_sector','col_use','col_region','col_sector'])['value'].sum().reset_index()
-    agged = agged.sort_values(by=['row_region','row_sector','col_use','col_region','col_sector'])
-    agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']],how='left',on='row_sector')
-    agged = pd.merge(left=agged,right=scheme2[['row_sector','row_sector3']].rename(columns={'row_sector':'col_sector','row_sector3':'col_sector3'}),how='left',on='col_sector')
-    agged.loc[agged.row_sector3.isnull(),'row_sector3'] = agged.loc[agged.row_sector3.isnull(),'row_sector']
-    agged.loc[agged.col_sector3.isnull(),'col_sector3'] = agged.loc[agged.col_sector3.isnull(),'col_sector']
 
 #############################################################################
 print('\nComputing sectoral employment shares...')
@@ -773,10 +761,10 @@ def write_iomat_latex(iomat,rowsums,colsums,fname):
         #file.write('\\end{landscape}\n')
 
 
-if NC4:
-    write_iomat_csv(iomat2,'output/iomat_nc4')
-    write_iomat_latex(iomat2,rowsums,colsums,'output/iomat_nc4')
-    sys.exit(0)   # the data figures and tables below are written by the 3-region run
+if not NC4:
+    write_iomat_csv(iomat2,'output/iomat_nc3')
+    write_iomat_latex(iomat2,rowsums,colsums,'output/iomat_nc3')
+    sys.exit(0)   # the data figures and tables below are written by the 4-region (default) run
 write_iomat_csv(iomat2,'output/iomat')
 write_iomat_latex(iomat2,rowsums,colsums,'output/iomat')
 
@@ -897,7 +885,8 @@ slist=list(sectors.keys())
 snames=[sectors[s] for s in sectors.keys()]
 
 partners = {'2-CHN':'China',
-            '3-ROW':'Rest of world'}
+            '3-LTP':'Low-tariff partners',
+            '4-HTP':'High-tariff partners'}
 
 pnames = [partners[p] for p in partners.keys()]
 
@@ -1003,11 +992,12 @@ M['DR'] = 100*M.M/M.GO
 Mt = M.loc[(M.col_region=='1-USA')].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
 Md = M.loc[(M.col_region=='1-USA') & (M.col_region==M.row_region)].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
 Mf = M.loc[(M.col_region=='1-USA') & (M.col_region!=M.row_region)].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
-Mc = M.loc[(M.col_region=='1-USA') & (M.row_region=='2-CHN')].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
-Mr = M.loc[(M.col_region=='1-USA') & (M.row_region=='3-ROW')].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
+# by source region: 3 China, 4 low-tariff partners, 5 high-tariff partners
+Mp = [M.loc[(M.col_region=='1-USA') & (M.row_region==r)].groupby(['col_sector','row_sector'])['DR'].sum().reset_index()
+      for r in partners]
 
-M = [Mt,Md,Mf,Mc,Mr]
-for i in range(5):
+M = [Mt,Md,Mf] + Mp
+for i in range(len(M)):
 
     df = M[i]
     fig,ax=create_fig()
@@ -1051,14 +1041,19 @@ M = pd.merge(left=M,right=output.rename(columns={'col_region':'row_region','col_
              how='left',on=['row_region','row_sector'])
 M['UR'] = 100*M.M/M.GO
 
-Mt = M.loc[(M.col_region=='1-USA')].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
-Md = M.loc[(M.col_region=='1-USA') & (M.col_region==M.row_region)].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
-Mf = M.loc[(M.col_region=='1-USA') & (M.col_region!=M.row_region)].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
-Mc = M.loc[(M.col_region=='1-USA') & (M.row_region=='2-CHN')].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
-Mr = M.loc[(M.col_region=='1-USA') & (M.row_region=='3-ROW')].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
+# Intermediate sales of each U.S. sector (row) to each buying sector (col), % of the U.S. seller's
+# gross output, by buyer region: 0 U.S. buyers (the paper's Figure 1(b)), 1 all buyers, 2 foreign
+# buyers, 3 China, 4 low-tariff partners, 5 high-tariff partners. (Previously panel 0 summed the
+# ratio M/GO of every seller region over sales to U.S. buyers, which mixed in foreign sellers.)
+US = M.loc[M.row_region=='1-USA']
+by = lambda mask: US.loc[mask].groupby(['col_sector','row_sector'])['UR'].sum().reset_index()
+Md = by(US.col_region=='1-USA')
+Ma = by(US.col_region!='TOT')
+Mf = by(US.col_region!='1-USA')
+Mp = [by(US.col_region==r) for r in partners]
 
-M = [Mt,Md,Mf,Mc,Mr]
-for i in range(5):
+M = [Md,Ma,Mf] + Mp
+for i in range(len(M)):
 
     df = M[i]
     fig,ax=create_fig()

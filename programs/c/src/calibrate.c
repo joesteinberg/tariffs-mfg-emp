@@ -153,8 +153,8 @@ uint load_iomat(params * p)
   double tmp;
   FILE * file;
 
-  // 3 regions: iomat.txt; 4 regions: iomat_nc4.txt (both written by icio.py)
-  file = fopen(NC==3 ? "../python/output/iomat.txt" : "../python/output/iomat_nc4.txt","rb");
+  // 4 regions: iomat.txt (icio.py --nc4); 3 regions: iomat_nc3.txt (icio.py)
+  file = fopen(NC==4 ? "../python/output/iomat.txt" : "../python/output/iomat_nc3.txt","rb");
 
   if(file)
     {

@@ -21,31 +21,31 @@ Parallel processing using 128 OMP threads
 
 Solving for free-trade benchmark...
 
-	Initializing solver on 72-variable system...
-		Initialization complete. Time = 0.00
-		1, 0 secs	max = 4.83e-13, 68	min = -2.27e-13, 1
-	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
+	Initializing solver on 96-variable system...
+		Initialization complete. Time = 1.00
+		1, 0 secs	max = 6.54e-13, 3	min = -3.69e-13, 1
+	Finished: success. Time = 1.00, iter = 1, sum |f| = 3.27516e-12
 
-	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 7.00
-		1, 23 secs	max = 9.89e-12, 5138	min = -1.40e-11, 19551
-	Finished: success. Time = 33.00, iter = 1, sum |f| = 1.16485e-09
+	Initializing solver on 30072-variable system...
+		Initialization complete. Time = 35.00
+		1, 114 secs	max = 7.36e-12, 3079	min = -1.20e-11, 1879
+	Finished: success. Time = 156.00, iter = 1, sum |f| = 1.25865e-09
 
 Solving for equilibrium with tariffs...
 
-	Initializing solver on 19554-variable system...
-		Initialization complete. Time = 6.00
-		1, 23 secs	max = 2.78e-01, 19307	min = -3.35e-01, 19306
-		2, 24 secs	max = 2.42e-02, 19365	min = -2.30e-02, 19435
-		3, 23 secs	max = 7.48e-04, 19365	min = -5.48e-04, 19371
-		4, 24 secs	max = 1.43e-06, 19365	min = -1.06e-06, 19371
-		5, 23 secs	max = 3.47e-11, 19365	min = -1.59e-10, 19551
-	Finished: success. Time = 126.00, iter = 5, sum |f| = 2.10753e-09
+	Initializing solver on 30072-variable system...
+		Initialization complete. Time = 34.00
+		1, 116 secs	max = 2.77e-01, 29702	min = -3.35e-01, 29701
+		2, 114 secs	max = 2.41e-02, 29770	min = -2.30e-02, 29851
+		3, 114 secs	max = 7.44e-04, 29770	min = -5.44e-04, 29777
+		4, 114 secs	max = 1.40e-06, 29770	min = -1.04e-06, 29777
+		5, 115 secs	max = 6.98e-11, 30002	min = -1.86e-10, 30018
+	Finished: success. Time = 614.00, iter = 5, sum |f| = 2.59651e-09
 Short run trade elasticities:
-Up-hi: 1.0147
+Up-hi: 1.0141
 Up-lo: 0.6006
-Dn-hi: 0.6923
-Dn-lo: 0.4996
+Dn-hi: 0.6922
+Dn-lo: 0.4998
 
 ----------------------------------------------------------------------
 
