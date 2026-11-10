@@ -1,0 +1,63 @@
+
+----------------------------------------------------------------------
+
+Tariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions
+Joseph Steinberg, University of Toronto
+
+----------------------------------------------------------------------
+
+Setting up environment...
+
+Model scenario:
+-Tariff rate: 0pct
+-Targeted sector: All goods
+-Targeted country: China + rest of world
+-Retaliation: No
+-Duration: Permanent
+-Adjustment costs: Labor + capital + supply chains
+-Tariff policy: Trump 2025 sector/source matrix
+  Note: -t, -s, and -c are ignored for tariff assignment under -p 1.
+-Portfolio adjustment cost psi_B = 0.01, output suffix _psib0.01
+
+Parallel processing using 128 OMP threads
+----------------------------------------------------------------------
+
+Solving for free-trade benchmark...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 4.83e-13, 68	min = -2.27e-13, 1
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 82.00
+		1, 322 secs	max = 1.50e-11, 68	min = -8.50e-12, 39051
+	Finished: success. Time = 418.00, iter = 1, sum |f| = 3.66116e-09
+
+Solving for equilibrium with tariffs...
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 61.00
+		1, 320 secs	max = 1.09e-01, 38612	min = -9.56e-02, 38877
+		2, 319 secs	max = 8.28e-04, 38918	min = -2.81e-03, 38935
+		3, 314 secs	max = 4.53e-07, 38918	min = -1.55e-06, 38935
+		4, 311 secs	max = 2.73e-11, 38416	min = -9.44e-12, 37831
+	Finished: success. Time = 1357.00, iter = 4, sum |f| = 1.94922e-09
+
+Solving for steady state with tariffs and bonds at b0...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 3.34e-07, 26	min = -1.36e-06, 2
+		2, 0 secs	max = 5.97e-12, 1	min = -7.87e-12, 68
+	Finished: success. Time = 0.00, iter = 2, sum |f| = 2.73551e-11
+Short run trade elasticities:
+Up-hi: 1.1070
+Up-lo: 0.7844
+Dn-hi: 0.9133
+Dn-lo: 0.6881
+
+----------------------------------------------------------------------
+
+Program complete!
+

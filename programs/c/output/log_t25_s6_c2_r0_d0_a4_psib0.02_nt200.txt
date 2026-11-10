@@ -1,0 +1,62 @@
+
+----------------------------------------------------------------------
+
+Tariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions
+Joseph Steinberg, University of Toronto
+
+----------------------------------------------------------------------
+
+Setting up environment...
+
+Model scenario:
+-Tariff rate: 25pct
+-Targeted sector: All goods
+-Targeted country: China + rest of world
+-Retaliation: No
+-Duration: Permanent
+-Adjustment costs: Labor + capital + supply chains
+-Portfolio adjustment cost psi_B = 0.02, output suffix _psib0.02
+
+Parallel processing using 128 OMP threads
+----------------------------------------------------------------------
+
+Solving for free-trade benchmark...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 4.83e-13, 68	min = -2.27e-13, 1
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 149.00
+		1, 243 secs	max = 1.39e-11, 1238	min = -9.44e-12, 39051
+	Finished: success. Time = 404.00, iter = 1, sum |f| = 3.66231e-09
+
+Solving for equilibrium with tariffs...
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 85.00
+		1, 266 secs	max = 4.21e-01, 39001	min = -4.95e-01, 8003
+		2, 255 secs	max = 3.68e-02, 38865	min = -2.51e-02, 38871
+		3, 260 secs	max = 9.07e-04, 38865	min = -6.57e-04, 38871
+		4, 250 secs	max = 4.28e-07, 38865	min = -2.98e-07, 38871
+		5, 340 secs	max = 7.67e-12, 39051	min = -8.10e-12, 39001
+	Finished: success. Time = 1480.00, iter = 5, sum |f| = 7.00781e-10
+
+Solving for steady state with tariffs and bonds at b0...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 1.41e-06, 26	min = -5.21e-06, 45
+		2, 0 secs	max = 3.05e-11, 1	min = -1.05e-11, 2
+	Finished: success. Time = 0.00, iter = 2, sum |f| = 1.08616e-10
+Short run trade elasticities:
+Up-hi: 1.3035
+Up-lo: 1.1951
+Dn-hi: 1.1831
+Dn-lo: 1.2006
+
+----------------------------------------------------------------------
+
+Program complete!
+

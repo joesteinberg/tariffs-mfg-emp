@@ -1,0 +1,58 @@
+
+----------------------------------------------------------------------
+
+Tariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions
+Joseph Steinberg, University of Toronto
+
+----------------------------------------------------------------------
+
+Setting up environment...
+
+Model scenario:
+-Tariff rate: 25pct
+-Targeted sector: Upstream/lo only
+-Targeted country: China + rest of world
+-Retaliation: No
+-Duration: Permanent
+-Adjustment costs: Labor + capital + supply chains
+-Portfolio adjustment cost psi_B = 0.01, output suffix _psib0.01
+
+Parallel processing using 128 OMP threads
+----------------------------------------------------------------------
+
+Solving for free-trade benchmark...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 4.83e-13, 68	min = -2.27e-13, 1
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 80.00
+		1, 322 secs	max = 1.50e-11, 68	min = -8.50e-12, 39051
+	Finished: success. Time = 418.00, iter = 1, sum |f| = 3.66116e-09
+
+Solving for equilibrium with tariffs...
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 58.00
+		1, 319 secs	max = 3.56e-02, 38833	min = -6.07e-02, 38806
+		2, 320 secs	max = 8.19e-04, 38865	min = -2.75e-03, 23
+		3, 313 secs	max = 3.28e-06, 23	min = -3.05e-06, 38823
+		4, 312 secs	max = 3.64e-10, 39017	min = -5.78e-10, 39034
+	Finished: success. Time = 1357.00, iter = 4, sum |f| = 9.03763e-09
+
+Solving for steady state with tariffs and bonds at b0...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 1.90e-08, 26	min = -7.35e-08, 2
+		2, 0 secs	max = 3.69e-13, 1	min = -6.34e-13, 22
+	Finished: success. Time = 0.00, iter = 2, sum |f| = 2.64274e-12
+Short run trade elasticities:
+Up-lo: 0.4108
+
+----------------------------------------------------------------------
+
+Program complete!
+

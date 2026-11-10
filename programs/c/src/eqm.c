@@ -464,6 +464,17 @@ uint set_initial_bgp_guess()
   eqm * e = &(eee0[0]);
   params * p = &(ppp0[0]);
   t=NT;
+
+  // tariff steady state (solve_ss_b0): start from the transition's terminal period
+  if(scenario!=0)
+    {
+      if(stack_bgp_vars(solver_x->data,&(eee1[0])))
+	{
+	  fprintf(logfile,"Failed to create guess for steady state!\n");
+	  return 1;
+	}
+      return 0;
+    }
   
   for(i=0; i<NC; i++)
     {
@@ -605,12 +616,21 @@ uint set_initial_eqm_guess()
 
 uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
 {
-  char fname2[160];
+  return write_eqm_vars_from(e,p,fname,i,0);
+}
+
+// as write_eqm_vars, but only periods tfirst..NT (tfirst = NT: the terminal steady state alone)
+uint write_eqm_vars_from(const eqm * e, const params * p, char * fname, uint i, uint tfirst)
+{
+  char fname2[200];
   // baseline closure (fixed aggregate labor, phi_Z = 2.9) has no suffix; endogenous GHH labor
-  // adds "_ghh", an elasticity vector (-e) adds "_sig_<name>", and an explicit sourcing cost (-z)
-  // adds "_phiZ_lo", "_phiZ_hi" or "_pz<value>"
-  char lsuf[96];
-  snprintf(lsuf,sizeof(lsuf),"%s%s%s",fixl ? "" : "_ghh",sig_suf,phiz_suf);
+  // adds "_ghh", a portfolio adjustment cost (-b) adds "_psib<value>", a horizon other than 100
+  // periods (make model_nt200) adds "_nt<NT>", an elasticity vector (-e) adds "_sig_<name>", and
+  // an explicit sourcing cost (-z) adds "_phiZ_lo", "_phiZ_hi" or "_pz<value>"
+  char lsuf[128], ntsuf[16] = "";
+  if(NT != 100)
+    snprintf(ntsuf,sizeof(ntsuf),"_nt%d",NT);
+  snprintf(lsuf,sizeof(lsuf),"%s%s%s%s%s",fixl ? "" : "_ghh",psib_suf,ntsuf,sig_suf,phiz_suf);
 
   if(scenario==1)
     {
@@ -658,7 +678,7 @@ uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i)
       fprintf(file,",ngdp_prod,b,cagg,pc_exact,welfare");
       fprintf(file,"\n");
 
-      for(t=0;t<(NT+1);t++)
+      for(t=tfirst;t<(NT+1);t++)
 	{
 	  fprintf(file,"%d,",t);
 	  fprintf(file,"%0.16f,",e->rgdp_t[t][i]);
@@ -988,12 +1008,12 @@ uint set_vars(eqm * e, const params * p, uint t, uint bgp)
 	    }
 	  else
 	    {
-	      e->rk_t[t][i] = e->pi_t[t-1][i]*e->cpi_t[t][0]/e->pb_t[t-1] - (1.0-p->delta)*e->pi_t[t][i];
+	      e->rk_t[t][i] = e->pi_t[t-1][i]*cap_disc(e,t,i) - (1.0-p->delta)*e->pi_t[t][i];
 	    }
 	}
       else
 	{
-	  e->rk_t[t][i] = e->pi_t[t-1][i]*e->cpi_t[t][0]/e->pb_t[t-1] - (1.0-p->delta)*e->pi_t[t][i];
+	  e->rk_t[t][i] = e->pi_t[t-1][i]*cap_disc(e,t,i) - (1.0-p->delta)*e->pi_t[t][i];
 	}
 
       for(int s=0; s<NS; s++)
@@ -1201,8 +1221,10 @@ uint ghh_domain_bad(const eqm * e, const params * p, int t0, int t1)
 uint eval_bgp_conds(const double * myx, double * myf, uint tn)
 {
   uint i=0,s=0,t=NT,nx=0;
-  eqm * e = &(eee0[tn]);
-  params * p = &(ppp0[tn]);
+  // no-tariff steady state (initial guess for the transition), or with scenario 1 the tariff
+  // steady state at given bonds (solve_ss_b0)
+  eqm * e = scenario==0 ? &(eee0[tn]) : &(eee1[tn]);
+  params * p = scenario==0 ? &(ppp0[tn]) : &(ppp1[tn]);
 
   e->b_t[t][0] = bbgp[0];
   e->b_t[t][1] = bbgp[1];
@@ -1334,10 +1356,46 @@ uint solve_bgp(double bb[NC])
       fprintf(logfile,"Error evaluating equilibrium function!\n");
     }
 
+  // tariff steady state (solve_ss_b0): put the exact solution into thread 0's state, which is
+  // what gets written out (the Jacobian uses every thread's state as scratch space)
+  if(!status && scenario!=0)
+    {
+      par=0;
+      if(bgp_func_f(solver_x,NULL,f0[0]) != GSL_SUCCESS)
+	{
+	  fprintf(logfile,"Error re-evaluating steady state at the solution!\n");
+	  status = 1;
+	}
+      par=1;
+    }
+
   fixl=fixl_;
 
   free_solver_mem();
   return status;
+}
+
+// With a portfolio adjustment cost (psi_B > 0), the long run of every tariff experiment is the
+// steady state with each country's bonds back at b0, whatever psi_B. Solve for it directly, for
+// comparison with the end of the finite-horizon transition. Uses (and overwrites) period NT of
+// eee1, so call it after the transition has been written out. Same equations as the no-tariff
+// steady state (solve_bgp), evaluated with the tariff parameters (scenario 1).
+uint solve_ss_b0(void)
+{
+  uint it;
+  double bb[NC];
+  for(uint i=0; i<NC; i++)
+    bb[i] = ppp1[0].b0[i];
+  for(it=1; it<NTH; it++)
+    copy_vars(&(eee1[it]), &(eee1[0]));
+
+  if(fixl!=1)
+    {
+      fprintf(logfile,"Steady state at b0 is only implemented with fixed labor; skipped.\n");
+      return 1;
+    }
+  free_solver_mem();
+  return solve_bgp(bb);
 }
 
 uint eval_eqm_conds(const double * myx, double * myf, uint tn)

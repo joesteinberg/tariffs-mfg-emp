@@ -1,0 +1,60 @@
+
+----------------------------------------------------------------------
+
+Tariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions
+Joseph Steinberg, University of Toronto
+
+----------------------------------------------------------------------
+
+Setting up environment...
+
+Model scenario:
+-Tariff rate: 25pct
+-Targeted sector: Upstream/hi only
+-Targeted country: China + rest of world
+-Retaliation: No
+-Duration: Permanent
+-Adjustment costs: Labor + capital + supply chains
+-Portfolio adjustment cost psi_B = 0.005, output suffix _psib0.005
+
+Parallel processing using 128 OMP threads
+----------------------------------------------------------------------
+
+Solving for free-trade benchmark...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 4.83e-13, 68	min = -2.27e-13, 1
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 39.00
+		1, 415 secs	max = 1.35e-11, 1238	min = -8.70e-12, 39051
+	Finished: success. Time = 466.00, iter = 1, sum |f| = 3.66402e-09
+
+Solving for equilibrium with tariffs...
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 53.00
+		1, 290 secs	max = 6.85e-01, 39001	min = -7.08e-01, 39006
+		2, 304 secs	max = 3.83e-02, 11	min = -1.71e-01, 23791
+		3, 186 secs	max = 4.49e-02, 38865	min = -3.26e-02, 38871
+		4, 243 secs	max = 9.62e-04, 38865	min = -7.03e-04, 38871
+		5, 205 secs	max = 4.81e-07, 38865	min = -3.49e-07, 38871
+		6, 203 secs	max = 1.00e-11, 39001	min = -2.29e-11, 39051
+	Finished: success. Time = 1515.00, iter = 6, sum |f| = 6.74479e-10
+
+Solving for steady state with tariffs and bonds at b0...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 2.88e-07, 1	min = -8.72e-07, 2
+		2, 0 secs	max = 4.52e-12, 68	min = -6.34e-12, 1
+	Finished: success. Time = 0.00, iter = 2, sum |f| = 2.44132e-11
+Short run trade elasticities:
+Up-hi: 0.7233
+
+----------------------------------------------------------------------
+
+Program complete!
+

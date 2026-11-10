@@ -7,7 +7,7 @@
 
 uint parse_args(int argc, char **argv)
 {
-  if(argc < 13 || argc > 23 || argc % 2 == 0)
+  if(argc < 13 || argc > 25 || argc % 2 == 0)
     {
       fprintf(logfile,"Wrong number of command line arguments = %d!\n",argc);
       return 1;
@@ -18,7 +18,7 @@ uint parse_args(int argc, char **argv)
 
   fprintf(logfile,"Model scenario:\n");
   
-  while((opt = getopt(argc, argv, "t:s:c:r:d:a:p:l:z:e:")) != -1)
+  while((opt = getopt(argc, argv, "t:s:c:r:d:a:p:l:z:e:b:")) != -1)
     {
       switch(opt){
 
@@ -293,6 +293,22 @@ uint parse_args(int argc, char **argv)
 	fprintf(logfile,"-Aggregate labor: %s\n", fixl ? "fixed at baseline" : "endogenous (GHH), output suffix _ghh");
 	break;
 
+      case 'b':
+	// portfolio adjustment cost psi_B (eqm.h): bonds return to b0 in the long run
+	psib = atof(optarg);
+	if(psib<0.0)
+	  {
+	    fprintf(logfile,"Portfolio adjustment cost must be nonnegative: %s\n",optarg);
+	    return 1;
+	  }
+	if(psib>0.0)
+	  snprintf(psib_suf,sizeof(psib_suf),"_psib%g",psib);
+	else
+	  psib_suf[0]='\0';
+	fprintf(logfile,"-Portfolio adjustment cost psi_B = %g%s%s\n",psib,
+		psib>0.0 ? ", output suffix " : " (none)",psib_suf);
+	break;
+
       case 'z':
 	// "lo"/"hi": the two calibrated alternatives (globals.h), output suffix _phiZ_lo/_phiZ_hi;
 	// a number: any other value (e.g. during the calibrate_phiz.py search), suffix _pz<value>
@@ -536,6 +552,23 @@ int quant_exercise()
   write_eqm_vars(&(eee1[0]),&(ppp1[0]),"vars1_chn",1);
   write_eqm_vars(&(eee1[0]),&(ppp1[0]),"vars1_row",2);
 
+  // with a portfolio adjustment cost, also solve for the long run directly: the tariff steady
+  // state with bonds at b0, the same for every psi_B (one row, period NT, in ss1_*.csv)
+  if(psib>0.0 && duration_flag_==0)
+    {
+      fprintf(logfile,"\nSolving for steady state with tariffs and bonds at b0...\n");
+      if(solve_ss_b0())
+	{
+	  fprintf(logfile,"Steady state at b0 not solved; ss1 files not written.\n");
+	}
+      else
+	{
+	  write_eqm_vars_from(&(eee1[0]),&(ppp1[0]),"ss1_usa",0,NT);
+	  write_eqm_vars_from(&(eee1[0]),&(ppp1[0]),"ss1_chn",1,NT);
+	  write_eqm_vars_from(&(eee1[0]),&(ppp1[0]),"ss1_row",2,NT);
+	}
+    }
+
   // -------------------------------------------------------------------------------------------------------
   // 1-period average SR trade elasticity
   //double tmp = eee1[0].te_t[TSHOCK][0];
@@ -573,6 +606,8 @@ int main(int argc, char * argv[])
   phiz_given=0;
   sig_vec=0;
   sig_suf[0]='\0';
+  psib=0.0; // baseline: no portfolio adjustment cost; -b <psi_B> adds one (eqm.h)
+  psib_suf[0]='\0';
   fixl=1; // baseline: aggregate labor fixed at its calibrated level; -l 0 for endogenous GHH labor
   ghh_prefs=1;
   eval_eqm_once_flag=0;

@@ -15,8 +15,19 @@ $(ODIR)/%.o: src/%.c $(DEPS)
 model: $(OBJ)
 	$(CC) -o $(EXDIR)/$@.bin $^ $(CFLAGS) $(LDFLAGS)
 
+# 200-period horizon (portfolio-adjustment-cost runs, -b): bin/model_nt200.bin, outputs get _nt200
+ODIR200 = src/obj200
+OBJ200 = $(patsubst %,$(ODIR200)/%,$(_OBJ))
+
+$(ODIR200)/%.o: src/%.c $(DEPS)
+	@mkdir -p $(ODIR200)
+	$(CC) -c -o $@ $< $(CFLAGS) -DNT=200
+
+model_nt200: $(OBJ200)
+	$(CC) -o $(EXDIR)/$@.bin $^ $(CFLAGS) $(LDFLAGS)
+
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o
+	rm -f $(ODIR)/*.o $(ODIR200)/*.o
 	rm -f $(EXDIR)/*

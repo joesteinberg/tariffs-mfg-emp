@@ -1,0 +1,58 @@
+
+----------------------------------------------------------------------
+
+Tariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions
+Joseph Steinberg, University of Toronto
+
+----------------------------------------------------------------------
+
+Setting up environment...
+
+Model scenario:
+-Tariff rate: 25pct
+-Targeted sector: Upstream/lo only
+-Targeted country: China + rest of world
+-Retaliation: No
+-Duration: Permanent
+-Adjustment costs: Labor + capital + supply chains
+-Portfolio adjustment cost psi_B = 0.005, output suffix _psib0.005
+
+Parallel processing using 128 OMP threads
+----------------------------------------------------------------------
+
+Solving for free-trade benchmark...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 4.83e-13, 68	min = -2.27e-13, 1
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 1.73538e-12
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 138.00
+		1, 233 secs	max = 1.35e-11, 1238	min = -8.70e-12, 39051
+	Finished: success. Time = 383.00, iter = 1, sum |f| = 3.66402e-09
+
+Solving for equilibrium with tariffs...
+
+	Initializing solver on 39054-variable system...
+		Initialization complete. Time = 55.00
+		1, 185 secs	max = 3.55e-02, 38833	min = -6.07e-02, 38806
+		2, 198 secs	max = 6.49e-04, 38993	min = -2.89e-03, 23
+		3, 150 secs	max = 3.59e-06, 23	min = -3.20e-06, 38823
+		4, 150 secs	max = 4.11e-10, 39017	min = -2.37e-10, 39051
+	Finished: success. Time = 750.00, iter = 4, sum |f| = 1.1011e-08
+
+Solving for steady state with tariffs and bonds at b0...
+
+	Initializing solver on 72-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 1.06e-07, 1	min = -4.41e-07, 2
+		2, 0 secs	max = 5.54e-12, 68	min = -2.95e-12, 45
+	Finished: success. Time = 0.00, iter = 2, sum |f| = 1.46546e-11
+Short run trade elasticities:
+Up-lo: 0.4043
+
+----------------------------------------------------------------------
+
+Program complete!
+

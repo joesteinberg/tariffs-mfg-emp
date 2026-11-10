@@ -51,3 +51,15 @@ for e in cp krs half u2 umean u5; do
     done
     ./bin/model.bin -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1 -e $e > output/log_trump2025_r0_d0_a4_sig_${e}.txt
 done
+
+# Portfolio adjustment cost (appendix): each country pays (psi_B/2)(b' - b0)^2/100 to hold bonds
+# different from its initial position, so net foreign assets return to their initial level in
+# the long run. 200-period horizon (make model_nt200); outputs carry _psib<psi>_nt200, and each
+# run also writes ss1_*: the tariff steady state with bonds at b0, which is the same for every psi_B.
+# Each run needs about 36 GB of memory.
+for b in 0.02 0.01 0.005; do
+    for s in 0 1 3 4 6; do
+	./bin/model_nt200.bin -t 25 -s $s -c 2 -r 0 -d 0 -a 4 -b $b > output/log_t25_s${s}_c2_r0_d0_a4_psib${b}_nt200.txt
+    done
+    ./bin/model_nt200.bin -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1 -b $b > output/log_trump2025_r0_d0_a4_psib${b}_nt200.txt
+done

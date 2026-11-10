@@ -37,7 +37,9 @@
 #define FIN 0
 #define INT 1
 
-#define NT 100 // time periods until convergence
+#ifndef NT
+#define NT 100 // time periods until convergence (override at compile time: make model_nt200)
+#endif
 
 #define TINY 1.0e-12
 #define TINYSQ 1.0e-6
@@ -67,6 +69,8 @@ uint f_adj_cost;
 uint k_adj_cost;
 uint l_adj_cost;
 uint fixl;
+double psib; // portfolio adjustment cost psi_B (-b <value>; appendix); 0 in the baseline
+char psib_suf[32]; // output-name suffix when psi_B > 0: "_psib<value>"
 uint cobb_douglas_flag;
 uint cobb_douglas_flag2;
 uint par;

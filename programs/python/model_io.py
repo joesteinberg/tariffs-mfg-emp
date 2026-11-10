@@ -11,6 +11,10 @@ Command-line options (parsed by both scripts):
   --sig NAME    use the runs solved with the long-run elasticity vector -e NAME (cp, krs, half, u2,
                 umean, u5; see the C code's globals.h), files with the _sig_NAME suffix; outputs get
                 the same suffix. Combines with --ghh and --pz.
+  --psib PSI    use the runs solved with a portfolio adjustment cost psi_B = PSI (C option -b PSI;
+                files with the _psib<PSI> suffix, PSI as "%g"); outputs get the same suffix.
+  --nt N        horizon of the runs, if not the default 100 periods (files with the _nt<N> suffix,
+                from bin/model_nt200.bin for N = 200). The psi_B runs use --nt 200.
   --partial     allow expected model runs to be missing. Only into a fresh --out directory: the
                 skipped inputs and outputs are listed in PARTIAL_MANIFEST.txt there, so a partial
                 set can never sit next to stale figures/tables from an earlier complete run.
@@ -48,10 +52,13 @@ def parse_args():
     ap.add_argument('--ghh', action='store_true')
     ap.add_argument('--pz', default=None, help='lo, hi, or a phi_Z value')
     ap.add_argument('--sig', default=None, help='long-run elasticity vector (C option -e)')
+    ap.add_argument('--psib', default=None, help='portfolio adjustment cost (C option -b)')
+    ap.add_argument('--nt', type=int, default=100, help='horizon (C binary model_nt<N>.bin)')
     ap.add_argument('--partial', action='store_true')
     args = ap.parse_args()
-    args.suffix = suffix(args.ghh, args.pz, args.sig)
-    args.sens = args.ghh or args.pz is not None or args.sig is not None
+    args.suffix = suffix(args.ghh, args.pz, args.sig, args.psib, args.nt)
+    args.sens = (args.ghh or args.pz is not None or args.sig is not None or args.psib is not None
+                 or args.nt != 100)
     os.makedirs(args.out, exist_ok=True)
     if args.partial:
         manifest = os.path.join(args.out, MANIFEST)
@@ -76,12 +83,15 @@ def phiz_value(pz=None):
     return PHIZ_BASE if pz is None else PHIZ[pz] if pz in PHIZ else float(pz)
 
 
-def suffix(ghh=False, pz=None, sig=None):
-    """File-name suffix used by the C code, in its order: _ghh for GHH labor; _sig_<name> for -e
-    <name>; _phiZ_lo / _phiZ_hi for -z lo / hi, _pz<phi> (as "%g") for -z <number>."""
+def suffix(ghh=False, pz=None, sig=None, psib=None, nt=100):
+    """File-name suffix used by the C code, in its order: _ghh for GHH labor; _psib<psi> (as "%g")
+    for -b <psi> > 0; _nt<N> for a horizon N other than 100; _sig_<name> for -e <name>;
+    _phiZ_lo / _phiZ_hi for -z lo / hi, _pz<phi> (as "%g") for -z <number>."""
     sz = '' if pz is None else '_phiZ_' + pz if pz in PHIZ else '_pz%g' % float(pz)
     ss = '' if sig in (None, 'base') else '_sig_' + sig
-    return ('_ghh' if ghh else '') + ss + sz
+    sb = '' if psib is None or float(psib) == 0 else '_psib%g' % float(psib)
+    sn = '' if nt == 100 else '_nt%d' % nt
+    return ('_ghh' if ghh else '') + sb + sn + ss + sz
 
 
 def _record(args, line):

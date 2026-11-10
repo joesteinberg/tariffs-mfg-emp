@@ -111,16 +111,40 @@ uint unstack_bgp_vars(eqm * e, const double * myx); // unstacks BGP vars from ar
 uint stack_eqm_vars(double * myx, const eqm * e); // stacks deterministic equilibrium vars into an array
 uint unstack_eqm_vars(eqm * e, const double * myx); // unstacks deterministic equillibrium vars
 uint set_initial_bpg_guess(); // constructs initial guess for a BGP... the "initial guess for the initial guess" function
+uint write_eqm_vars_from(const eqm * e, const params * p, char * fname, uint i, uint tfirst);
 uint write_eqm_vars(const eqm * e, const params * p, char * fname, uint i); // write main deterministic equilibrium vars for country i to file
 uint set_vars(eqm * e, const params * p, uint t, uint bgp); // sets all the variables for a given period t
 uint eval_bgp_conds(const double * myx, double * myf, uint tn); // evaluates the BGP equations
 uint solve_bgp(double bb[NC]); // solves for the balanced growth path
+uint solve_ss_b0(void); // tariff steady state with bonds at b0 (psi_B > 0), into eee1[0] period NT
 uint eval_eqm_conds(const double * myx, double * myf, uint tn); // evaluates the deterministic equilibrium conditions
 uint solve_eqm(int start_flag); // solves for the deterministic equilibrium
 uint calc_welfare(eqm * e, const params * p);
 uint ghh_domain_bad(const eqm * e, const params * p, int t0, int t1);
 
 // inlined equilibrium equations
+
+// Portfolio adjustment cost (-b <psi_B>; appendix, R2 Major 4). Each household pays
+// (psi_B/2)(b_{t+1} - b0)^2/100 (numeraire units; b in units of 1% of US GDP) to hold bonds
+// different from its initial position b0. The cost is rebated lump-sum, so it does not enter the
+// budget constraint, but it adds a wedge to the bond Euler equation (bcost_d below). The no-tariff
+// steady state is unchanged (b = b0), and with tariffs the economy returns to a unique steady
+// state with b = b0 instead of the transition-dependent one of the baseline model.
+// Firms discount with their own household's SDF Q_t, which with the wedge differs from the world
+// bond price; without it (psi_B = 0, or b = b0) the two coincide: Q_{t-1} = pb_{t-1}/cpi^US_t.
+
+// gross return, in numeraire units, used to discount capital from t-1 to t
+static inline double cap_disc(const eqm * e, uint t, uint i)
+{
+  return psib>0.0 ? 1.0/e->Q_t[t-1][i] : e->cpi_t[t][0]/e->pb_t[t-1];
+}
+
+// marginal portfolio adjustment cost, d/db_{t+1} of (psi_B/2)(b_{t+1}-b0)^2/100
+static inline double bcost_d(const params * p, const eqm * e, uint t, uint i)
+{
+  return psib * (e->b_t[t+1][i] - p->b0[i]) / 100.0;
+}
+
 static inline double mpk_rk(const params * p, const eqm * e, uint t, uint i, uint s)
 {
   if(t>=(NT-1) || k_adj_cost==0)
@@ -137,7 +161,7 @@ static inline double mpk_rk(const params * p, const eqm * e, uint t, uint i, uin
 	*( (e->py_t[t][i][s] - DOT_PROD(p->lam[i][s],e->pm_t[t][i],NS-1))
 	   * (1.0-p->tauk[i]) *  (p->a_ts[t][i][s]) * (p->alpha[i][s]) * (p->A[i][s]/p->lam_va[i][s])
 	   * (pow(e->k_t[t][i][s]/e->l_t[t][i][s],p->alpha[i][s]-1.0))
-	   - e->pi_t[t-1][i] * (e->cpi_t[t][0]/e->pb_t[t-1])
+	   - e->pi_t[t-1][i] * cap_disc(e,t,i)
 	   / dphiK(e->is_t[t-1][i][s]/e->k_t[t-1][i][s],p->delta,p->etaK)
 	   - (e->pi_t[t][i]/dphiK(e->is_t[t][i][s]/e->k_t[t][i][s],p->delta,p->etaK))
 	   * ( dphiK(e->is_t[t][i][s]/e->k_t[t][i][s],p->delta,p->etaK) * e->is_t[t][i][s]/e->k_t[t][i][s]
@@ -233,8 +257,9 @@ static inline double muc_mul(const params * p, const eqm * e, uint t, uint i)
 
 static inline double euler(const params * p, const eqm * e, uint t, uint i)
 {
-  // Bond Euler: pb_t * u_c(t)/p(t) = beta * cpi^US(t+1) * u_c(t+1)/p(t+1), with GHH utility
-  return 10000.0 * (e->pb_t[t] * muc_ghh(
+  // Bond Euler: [pb_t + cpi^US(t) bcost_d] * u_c(t)/p(t) = beta * cpi^US(t+1) * u_c(t+1)/p(t+1),
+  // with GHH utility (bcost_d = 0 without the portfolio adjustment cost)
+  return 10000.0 * ((e->pb_t[t] + e->cpi_t[t][0]*bcost_d(p,e,t,i)) * muc_ghh(
 					 e->c_t[t][i],
 					 e->ll_t[t][i],
 					 p->eps[i][0],
