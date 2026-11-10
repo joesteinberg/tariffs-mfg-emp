@@ -117,14 +117,14 @@ double phiz; // sourcing adjustment cost phi_Z (etaM = etaF); default 2.9, set w
 char phiz_suf[32]; // output-name suffix when -z is given: "_phiZ_lo", "_phiZ_hi", or "_pz<value>"
 // Alternative phi_Z values from calibrate_phiz.py: short-run Armington elasticity (US, impact,
 // symmetric 25% all-goods tariff) of 1.0 (lo, weak frictions) and 0.2 (hi, strong frictions).
-// The baseline 2.9 gives 0.48. Keep in sync with PHIZ in programs/python/model_io.py.
-#define PHIZ_LO 0.6585
-#define PHIZ_HI 12.44
+// The baseline 2.9 gives 0.473 (4 regions). Keep in sync with PHIZ in programs/python/model_io.py.
+#define PHIZ_LO 0.6645
+#define PHIZ_HI 11.4
 
 // Long-run Armington elasticity vectors (-e NAME), by goods sector (Oil = UPH, Steel = UPL,
 // Toys = DNH, Cars = DNL) for intermediate (zeta) and final (sig) sourcing; services stay at 1.05.
 // Output suffix "_sig_<name>". SIG_PHIZ is phi_Z re-targeted (calibrate_phiz.py --sig NAME) so the
-// impact Armington elasticity in the symmetric experiment equals the baseline's 0.4812; 0 means not
+// impact Armington elasticity in the symmetric experiment equals the baseline's 0.4733; 0 means not
 // yet calibrated, in which case -z must be given.
 //   cp:    Caliendo-Parro (2015) theta + 1, trade-weighted by cluster (icio.py, 4-region weights)
 //   krs:   Kehoe-Ruhl-Steinberg (2018): 3 for intermediates, 2 for final goods, every sector
@@ -149,9 +149,7 @@ static const double SIG_FIN[NSIGV][4] = {
   {2.0, 2.0, 2.0, 2.0},
   {3.25, 3.25, 3.25, 3.25},
   {5.0, 5.0, 5.0, 5.0}};
-// NOTE: SIG_PHIZ (and PHIZ_LO / PHIZ_HI above) were calibrated in the 3-region model; re-target them
-// with calibrate_phiz.py for the 4-region baseline before the sensitivity runs.
-static const double SIG_PHIZ[NSIGV] = {2.9, 4.74, 2.966, 3.465, 2.488, 3.71, 4.745};
+static const double SIG_PHIZ[NSIGV] = {2.9, 4.568, 2.95, 3.423, 2.522, 3.648, 4.578};
 uint sig_vec; // 0 = baseline (8/2/4/1.05)
 uint phiz_given; // 1 if -z was given (overrides the vector's re-targeted phi_Z)
 char sig_suf[32];

@@ -28,7 +28,7 @@ import subprocess
 
 BASE_ARGS = ['-t', '25', '-s', '6', '-c', '2', '-r', '2', '-d', '0', '-a', '4']
 STAT = 'ae'
-BASE_TARGET = 0.4811530373   # `ae` at baseline phi_Z = 2.9 and baseline elasticities
+BASE_TARGET = 0.4732697761   # `ae` at baseline phi_Z = 2.9 and baseline elasticities (4 regions; 3 regions: 0.4811530373)
 
 
 def fmt(phi):
@@ -73,7 +73,7 @@ def evaluate(phi, cache, args, cache_path):
 def solve_target(target, cache, args, cache_path):
     print('target %s = %g' % (STAT, target), flush=True)
     if not cache:
-        evaluate(2.9, cache, args, cache_path)
+        evaluate(args.start, cache, args, cache_path)
     for _ in range(args.maxit):
         pts = sorted(cache.items(), key=lambda kv: abs(math.log(kv[1] / target)))
         phi0, e0 = pts[0]
@@ -105,6 +105,7 @@ def main():
     ap.add_argument('--rundir', default='.')
     ap.add_argument('--tol', type=float, default=0.0005)
     ap.add_argument('--maxit', type=int, default=10)
+    ap.add_argument('--start', type=float, default=2.9, help='first phi_Z to try (with an empty cache)')
     args = ap.parse_args()
     args.bin = os.path.abspath(args.bin)
     args.eargs = [] if args.sig is None else ['-e', args.sig]
