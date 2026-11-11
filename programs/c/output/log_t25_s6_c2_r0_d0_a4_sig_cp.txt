@@ -1,0 +1,57 @@
+
+----------------------------------------------------------------------
+
+Tariffs, Manufacturing Employment, and Supply-Chain Adjustment Frictions
+Joseph Steinberg, University of Toronto
+
+----------------------------------------------------------------------
+
+Setting up environment...
+
+Model scenario:
+-Tariff rate: 25pct
+-Targeted sector: All goods
+-Targeted country: all partners
+-Retaliation: No
+-Duration: Permanent
+-Adjustment costs: Labor + capital + supply chains
+-Armington elasticities: cp (intermediate 20.13/3.87/12.82/3.14, final 20.13/3.87/12.82/3.14)
+-Sourcing adjustment cost phi_Z = 4.568 (re-targeted for -e cp)
+
+Parallel processing using 128 OMP threads
+----------------------------------------------------------------------
+
+Solving for free-trade benchmark...
+
+	Initializing solver on 96-variable system...
+		Initialization complete. Time = 0.00
+		1, 0 secs	max = 5.76e-13, 92	min = -9.09e-13, 3
+	Finished: success. Time = 0.00, iter = 1, sum |f| = 3.16079e-12
+
+	Initializing solver on 30072-variable system...
+		Initialization complete. Time = 158.00
+		1, 251 secs	max = 8.49e-12, 30052	min = -7.20e-12, 4879
+	Finished: success. Time = 455.00, iter = 1, sum |f| = 1.28618e-09
+
+Solving for equilibrium with tariffs...
+
+	Initializing solver on 30072-variable system...
+		Initialization complete. Time = 215.00
+		1, 241 secs	max = 3.63e+00, 30001	min = -1.78e+00, 30003
+		2, 289 secs	max = 1.03e+00, 29770	min = -7.45e-01, 29777
+		3, 233 secs	max = 4.31e-01, 29770	min = -3.07e-01, 29777
+		4, 297 secs	max = 5.45e-02, 29770	min = -3.96e-02, 29777
+		5, 230 secs	max = 1.31e-03, 29770	min = -9.54e-04, 29777
+		6, 221 secs	max = 8.64e-07, 29770	min = -6.35e-07, 29777
+		7, 307 secs	max = 3.16e-11, 29703	min = -2.21e-11, 29103
+	Finished: success. Time = 2052.00, iter = 7, sum |f| = 1.0204e-09
+Short run trade elasticities:
+Up-hi: 1.0935
+Up-lo: 0.9593
+Dn-hi: 0.9791
+Dn-lo: 0.9618
+
+----------------------------------------------------------------------
+
+Program complete!
+

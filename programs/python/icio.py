@@ -279,9 +279,9 @@ e2 = trd.groupby(['row_sector3'])[['elast_CP']].agg(wavg).reset_index()
 print(e2.loc[~(e2.elast_CP.isnull()),:])
 
 # industry-level detail behind the cluster elasticities (appendix table): upstreamness (mean
-# across the three regions), Caliendo-Parro trade elasticity, and the weight of each industry in
-# its cluster's average = its 2020 trade between the three model regions (USA, CHN, ROW; intra-RoW
-# trade excluded), intermediate and final use combined, in current USD
+# across the model regions), Caliendo-Parro trade elasticity, and the weight of each industry in
+# its cluster's average = its 2020 trade between the model regions (USA, CHN, LTP, HTP; trade within
+# a partner region excluded), intermediate and final use combined, in current USD
 CLUSTER_NAME = {'UP-HI': 'Oil', 'UP-LO': 'Steel', 'DN-HI': 'Toys', 'DN-LO': 'Cars'}
 ind_trade = trd.groupby('row_sector')['value'].sum()
 ind_tab = scheme2[['row_sector', 'name', 'row_sector3', 'U', 'elast_CP']].copy()

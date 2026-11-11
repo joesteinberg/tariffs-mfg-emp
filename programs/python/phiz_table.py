@@ -8,7 +8,9 @@ model.bin -z lo / -z hi; the values, from calibrate_phiz.py, are PHIZ in model_i
   phi_Z            sourcing adjustment cost
   calib_elast      the calibration statistic at this phi_Z: US impact Armington elasticity (`ae`
                    at t = 0) in the symmetric all-goods experiment (vars1_usa_t25_s6_c2_r2_d0_a4*)
-  exp_elast        the same statistic in the experiment of this row
+  exp_elast        the same statistic in the experiment of this row (CSV only: with tariffs that
+                   differ across partners or sectors, as in 2025, some relative prices barely move
+                   and the trade-weighted ratio is erratic)
   impact, trough, trough_yr, lr
                    goods employment, % change from the no-tariff baseline (lr = final period)
   recovery_yr      first year from which goods employment stays above baseline ('--' if never)
@@ -75,14 +77,20 @@ for exp in ['All goods', '2025']:
 tab = pd.DataFrame(rows)
 tab.to_csv(os.path.join(args.out, 'tab_phiz.csv'), index=False)
 
-head = ['Experiment', '$\\phi_Z$', 'SR elast.', 'SR elast. (exp.)', 'Impact', 'Trough', 'Trough yr',
+def frictions(r):
+    """Row label: strength of the frictions and the short-run elasticity phi_Z was set to hit."""
+    lab = 'Baseline' if r['phi_Z'] == PHIZ_BASE else 'Weak' if r['phi_Z'] < PHIZ_BASE else 'Strong'
+    return '%s (%.2f)' % (lab, r['calib_elast'])
+
+
+head = ['Experiment', 'Frictions (SR elast.)', '$\\phi_Z$', 'Impact', 'Trough', 'Trough yr',
         'Recovery yr', 'Conv. yr', 'Long run']
-lines = ['\\begin{tabular}{lrrrrrrrrr}', '\\toprule', ' & '.join(head) + ' \\\\', '\\midrule']
+lines = ['\\begin{tabular}{llrrrrrrr}', '\\toprule', ' & '.join(head) + ' \\\\', '\\midrule']
 for i, r in tab.iterrows():
     if i and r['experiment'] != tab['experiment'][i - 1]:
         lines.append('\\midrule')
     cell = lambda v, f: '--' if isinstance(v, float) and np.isnan(v) else f % v
-    lines.append(' & '.join([r['experiment'], ('%g (baseline)' if r['phi_Z'] == PHIZ_BASE else '%g') % r['phi_Z'], '%.2f' % r['calib_elast'], '%.2f' % r['exp_elast'],
+    lines.append(' & '.join([r['experiment'], frictions(r), '%g' % r['phi_Z'],
                              '%.2f' % r['impact'], cell(r['trough'], '%.2f'), cell(r['trough_yr'], '%d'),
                              cell(r['recovery_yr'], '%d'), '%d' % r['conv_yr'], '%.2f' % r['lr']]) + ' \\\\')
 lines += ['\\bottomrule', '\\end{tabular}']
