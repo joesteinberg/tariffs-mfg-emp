@@ -44,7 +44,7 @@ def which_bottom(bottom_p, bottom_n, data):
 # load the results (see model_io.py for options: --cdir, --out, --ghh, --pz, --sig, --partial)
 
 import os
-from model_io import (parse_args, load_results, load_results_trump2025, have, check_inputs,
+from model_io import (parse_args, load_results, load_results_trump2025, have, check_inputs, suffix,
                       note_skipped, pct_chg, diff_pct_lg, pp_chg, SLABELS, SCENARIOS, SCEN_CODES)
 
 args = parse_args()
@@ -606,6 +606,40 @@ if have(df_all, df_m, df_f):
     plt.clf()
 else:
     skipped('intermediates-only / final-only comparison')
+
+# LR goods employment under alternative long-run Armington elasticities (paper Figure 3c): baseline
+# vs. the Caliendo-Parro and KRS vectors (runs solved with model.bin -e cp / -e krs; see sig_table.py).
+# Drawn from the baseline run only, since it compares elasticity vectors.
+if not args.sens:
+    import copy
+    SIG_CASES = [(None, 'Baseline', 'black'), ('cp', 'Caliendo-Parro', colors[1]), ('krs', 'KRS', colors[0])]
+    def _sig_runs(sig):
+        if sig is None:
+            return df_all
+        a2 = copy.copy(args)
+        a2.sig, a2.sens = sig, True
+        a2.suffix = suffix(args.ghh, args.pz, sig, args.psib, args.nt, args.nc)
+        return [load_results(t,s,2,r,d,a,a2) for s in SCEN_CODES]
+    sig_runs = [_sig_runs(sig) for sig, _, _ in SIG_CASES]
+    if have(*sig_runs):
+        order = [list(scenarios).index(p) for p in data_df.scenario]   # baseline ranking, as above
+        vals = np.array([lr(runs,'lg')[order] for runs in sig_runs])
+        x = np.arange(len(order))
+        w = 0.75/len(SIG_CASES)
+        fig,ax=create_fig()
+        for k, (_, lab, col) in enumerate(SIG_CASES):
+            ax.bar(x + (k - (len(SIG_CASES)-1)/2)*w, vals[k], w, color=col, alpha=0.99, edgecolor='black', lw=0.5, label=lab)
+        ax.set_xticks(x, data_df.scenario)
+        ax.axhline(0.0,color='black',ls='-',lw=1)
+        ax.set_ylim(min(-3.5, vals.min()-0.5), max(8, vals.max()+0.6))
+        ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
+        ax.set_xlabel('targeted sector')
+        ax.set_ylabel('pct change in total goods emp')
+        fig.tight_layout()
+        savefig('fig_lr_emp_sig')
+        plt.clf()
+    else:
+        skipped('fig_lr_emp_sig (needs the -e cp and -e krs runs)')
 
 
 
