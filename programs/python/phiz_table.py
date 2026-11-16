@@ -80,7 +80,7 @@ tab.to_csv(os.path.join(args.out, 'tab_phiz.csv'), index=False)
 def frictions(r):
     """Row label: strength of the frictions and the short-run elasticity phi_Z was set to hit."""
     lab = 'Baseline' if r['phi_Z'] == PHIZ_BASE else 'Weak' if r['phi_Z'] < PHIZ_BASE else 'Strong'
-    return '%s (%.2f)' % (lab, r['calib_elast'])
+    return '%s (%.1f)' % (lab, r['calib_elast'])
 
 
 head = ['Experiment', 'Frictions (SR elast.)', '$\\phi_Z$', 'Impact', 'Trough', 'Trough yr',
@@ -90,7 +90,7 @@ for i, r in tab.iterrows():
     if i and r['experiment'] != tab['experiment'][i - 1]:
         lines.append('\\midrule')
     cell = lambda v, f: '--' if isinstance(v, float) and np.isnan(v) else f % v
-    lines.append(' & '.join([r['experiment'], frictions(r), '%g' % r['phi_Z'],
+    lines.append(' & '.join([r['experiment'], frictions(r), ('%.2f' if r['phi_Z'] < 1 else '%.1f') % r['phi_Z'],
                              '%.2f' % r['impact'], cell(r['trough'], '%.2f'), cell(r['trough_yr'], '%d'),
                              cell(r['recovery_yr'], '%d'), '%d' % r['conv_yr'], '%.2f' % r['lr']]) + ' \\\\')
 lines += ['\\bottomrule', '\\end{tabular}']
