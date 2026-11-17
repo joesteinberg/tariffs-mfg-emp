@@ -382,11 +382,20 @@ for s in range(5):
     plot_tb(df_all[s], 'fig_dyn_tb_s%d'%s)
 plot_tb(df_trump2025, 'fig_dyn_tb_trump2025')
 
+def nfa_chg(df):
+    """Change in bond holdings, % of no-tariff GDP in the first period (b is in units of 1% of
+    U.S. GDP; a ratio to current GDP would also move with the price level)."""
+    return (100 * (df[1]['b'] - df[0]['b']) / df[0]['ngdp'].values[0]).values
+
 if have(df_all):
-    for var,fname,ylabel in [('nx_y','fig_dyn_tb_across','change in trade balance (pp of GDP)'),
-                             ('b_y','fig_dyn_nfa_across','change in NFA (pp of GDP)')]:
-        data = pd.DataFrame({scenarios[s]: pp_chg(df_all[s],var) for s in range(5)})
-        plot_dyn(data,fname,ylabel=ylabel,size=(3.25*0.5/0.4,3.4),lr_bars=True)
+    # the five 25% scenarios plus the 2025 schedule (orange dotted, before "All") when available
+    for fn,fname,ylabel in [(lambda d: pp_chg(d,'nx_y'),'fig_dyn_tb_across','change in trade balance (pp of GDP)'),
+                            (nfa_chg,'fig_dyn_nfa_across','change in NFA (% of initial GDP)')]:
+        data = {scenarios[s]: fn(df_all[s]) for s in range(4)}
+        if df_trump2025 is not None:
+            data['2025'] = fn(df_trump2025)
+        data[scenarios[4]] = fn(df_all[4])
+        plot_dyn(pd.DataFrame(data),fname,ylabel=ylabel,size=(3.25*0.5/0.4,3.4),lr_bars=True)
         plt.close('all')
 else:
     skipped('fig_dyn_tb_across, fig_dyn_nfa_across')
