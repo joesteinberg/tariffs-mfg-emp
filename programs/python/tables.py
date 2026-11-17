@@ -151,7 +151,8 @@ write(sec, 'tab_sectors_lr', '%.2f', hdr)
 # ---------------------------------------------------------------------------------------------
 # Paper appendix: numbers behind Figures 1-2 (R1 Min 3). Rows are the policies in the main text,
 # plus all goods without adjustment frictions and with retaliation. Two tables:
-#   tab_numbers         goods employment (impact, years 5 and 10, trough, LR) and LR aggregates
+#   tab_numbers         goods employment (impact, years 5 and 10, trough, LR) and LR real GDP,
+#                       capital, real appreciation (no consumption: keep the table positive, not normative)
 #   tab_numbers_sectors LR goods employment by sector: own % change and contribution
 
 NUM_ROWS = [("``Oil''", POLICIES.get('Oil')), ("``Steel''", POLICIES.get('Steel')),
@@ -174,7 +175,7 @@ for name, m in NUM_ROWS:
     st = path_stats(g)
     rows[name] = {'impact': g[0], 'year 5': g[5], 'year 10': g[10],
                   'trough': st['trough'], 'trough yr': st['trough_yr'], 'LR': g[-1],
-                  'real GDP': pct(m, 'rgdp')[-1], 'real consumption': pct(m, 'cagg')[-1],
+                  'real GDP': pct(m, 'rgdp')[-1],
                   'capital': 100 * (kagg(x).values[-1] / kagg(b).values[-1] - 1),
                   'real appreciation': -pct(m, 'rer')[-1]}
     r = {}
@@ -200,10 +201,10 @@ def write_grouped(df, name, colspec, header, fmt):
         fh.write('\n'.join(lines) + '\n')
 
 
-write_grouped(pd.DataFrame(rows).T, 'tab_numbers', 'l' + 'r' * 10,
-              [' & \\multicolumn{6}{c}{Goods employment (\\%)} & \\multicolumn{4}{c}{Long run (\\%)} \\\\',
-               '\\cmidrule(lr){2-7}\\cmidrule(lr){8-11}',
-               ' & Impact & Year 5 & Year 10 & Trough & Year & Long run & Real GDP & Real cons. & Capital & Real appr. \\\\'],
+write_grouped(pd.DataFrame(rows).T, 'tab_numbers', 'l' + 'r' * 9,
+              [' & \\multicolumn{6}{c}{Goods employment (\\%)} & \\multicolumn{3}{c}{Long run (\\%)} \\\\',
+               '\\cmidrule(lr){2-7}\\cmidrule(lr){8-10}',
+               ' & Impact & Year 5 & Year 10 & Trough & Year & Long run & Real GDP & Capital & Real appr. \\\\'],
               {'trough yr': '%d'})
 write_grouped(pd.DataFrame(srows).T, 'tab_numbers_sectors', 'l' + 'r' * 9,
               [' & \\multicolumn{4}{c}{Own change (\\%)} & \\multicolumn{4}{c}{Contribution (\\% of goods emp.)} & \\\\',
