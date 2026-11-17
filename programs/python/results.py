@@ -395,7 +395,7 @@ if have(df_all):
         if df_trump2025 is not None:
             data['2025'] = fn(df_trump2025)
         data[scenarios[4]] = fn(df_all[4])
-        plot_dyn(pd.DataFrame(data),fname,ylabel=ylabel,size=(3.25*0.5/0.4,3.4),lr_bars=True)
+        plot_dyn(pd.DataFrame(data),fname,ylabel=ylabel,size=(3.25,3.25),ncl=2,lr_bars=True)
         plt.close('all')
 else:
     skipped('fig_dyn_tb_across, fig_dyn_nfa_across')
