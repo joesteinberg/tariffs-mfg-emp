@@ -23,7 +23,7 @@ import os
 import numpy as np
 import pandas as pd
 from model_io import (parse_args, load_results, load_results_trump2025, check_inputs, note_skipped,
-                      SLABELS, SCEN_CODES)
+                      SLABELS, SCEN_CODES, suffix)
 
 args = parse_args()
 
@@ -403,5 +403,80 @@ if args.nc == 4:
         lines += ['\\bottomrule', '\\end{tabular}']
         with open(out('tab_diversion') + '.tex', 'w') as fh:
             fh.write('\n'.join(lines) + '\n')
+
+# ---------------------------------------------------------------------------------------------
+# Baseline only (they combine runs across sets):
+#   tab_frictions  all-goods tariff with one adjustment friction at a time (-a 0..4; R2 Maj 2):
+#                  goods employment path, and contributions of ``toys'' and the other three goods
+#                  sectors at year 5 and in the LR (pp of baseline goods emp). The CSV also has
+#                  real appreciation on impact and in the LR.
+#   tab_ghh        endogenous (GHH) vs fixed labor (R2 Maj 3): goods employment path, total labor,
+#                  real GDP, for the six main policies.
+
+if not args.sens:
+    FRIC = [('All frictions (baseline)', 4), ('No frictions', 0), ('Labor only', 1),
+            ('Capital only', 2), ('Supply chain only', 3)]
+    rows = {}
+    for name, a in FRIC:
+        m = load_results(25, 6, 2, 0, 0, a, args)
+        if m is None:
+            note_skipped(args, 'tables.py', 'tab_frictions row %s' % name)
+            continue
+        b, x = m
+        g = pct(m, 'lg')
+        st = path_stats(g)
+        ctoys = 100 * (x['l2'] - b['l2']).values / b['lg'].values
+        coth = 100 * ((x['l0'] + x['l1'] + x['l3']) - (b['l0'] + b['l1'] + b['l3'])).values / b['lg'].values
+        rows[name] = {'impact': g[0], 'year 5': g[5], 'year 10': g[10],
+                      'trough': st['trough'], 'trough yr': st['trough_yr'], 'LR': g[-1],
+                      'toys year 5': ctoys[5], 'toys LR': ctoys[-1],
+                      'other goods year 5': coth[5], 'other goods LR': coth[-1],
+                      'real appreciation impact': -pct(m, 'rer')[0],
+                      'real appreciation LR': -pct(m, 'rer')[-1]}
+    if rows:
+        fr = pd.DataFrame(rows).T
+        fr.to_csv(out('tab_frictions') + '.csv')
+        cols = ['impact', 'year 5', 'year 10', 'trough', 'trough yr', 'LR',
+                'toys year 5', 'toys LR', 'other goods year 5', 'other goods LR']
+        lines = ['\\begin{tabular}{l' + 'r' * len(cols) + '}', '\\toprule',
+                 ' & \\multicolumn{6}{c}{Goods employment (\\%)} & \\multicolumn{2}{c}{``Toys\'\'}'
+                 ' & \\multicolumn{2}{c}{Other goods} \\\\',
+                 '\\cmidrule(lr){2-7}\\cmidrule(lr){8-9}\\cmidrule(lr){10-11}',
+                 'Adjustment frictions & Impact & Year 5 & Year 10 & Trough & Year & Long run'
+                 ' & Year 5 & Long run & Year 5 & Long run \\\\', '\\midrule']
+        for idx, r in fr.iterrows():
+            cells = ['--' if np.isnan(r[c]) else ('%d' if c == 'trough yr' else '%.2f') % r[c] for c in cols]
+            lines.append(idx + ' & ' + ' & '.join(cells) + ' \\\\')
+            if idx.startswith('All frictions'):
+                lines.append('\\midrule')
+        lines += ['\\bottomrule', '\\end{tabular}']
+        with open(out('tab_frictions') + '.tex', 'w') as fh:
+            fh.write('\n'.join(lines) + '\n')
+
+    ga = type(args)(**vars(args))
+    ga.suffix = suffix(True, args.pz, args.sig, args.psib, args.nt, args.nc)
+    GHH_ROWS = [("``Oil''", 'Oil', 0), ("``Steel''", 'Steel', 1), ("``Toys''", 'Toys', 3),
+                ("``Cars''", 'Cars', 4), ('All goods', 'All', 6), ('2025 tariffs', '2025', None)]
+    rows = {}
+    for lab, key, s in GHH_ROWS:
+        mg = load_results(25, s, 2, 0, 0, 4, ga) if s is not None else load_results_trump2025(0, 0, 4, ga)
+        mb = POLICIES.get(key)
+        if mg is None or mb is None:
+            note_skipped(args, 'tables.py', 'tab_ghh row %s' % key)
+            continue
+        g = pct(mg, 'lg')
+        st = path_stats(g)
+        rows[lab] = {'impact': g[0], 'trough': st['trough'], 'trough yr': st['trough_yr'], 'LR': g[-1],
+                     'LR fixed labor': pct(mb, 'lg')[-1],
+                     'total labor impact': pct(mg, 'll')[0], 'total labor LR': pct(mg, 'll')[-1],
+                     'real GDP LR': pct(mg, 'rgdp')[-1], 'real GDP LR fixed labor': pct(mb, 'rgdp')[-1]}
+    if rows:
+        write_grouped(pd.DataFrame(rows).T, 'tab_ghh', 'l' + 'r' * 9,
+                      [' & \\multicolumn{5}{c}{Goods employment (\\%)} & \\multicolumn{2}{c}{Total labor (\\%)}'
+                       ' & \\multicolumn{2}{c}{Real GDP, long run (\\%)} \\\\',
+                       '\\cmidrule(lr){2-6}\\cmidrule(lr){7-8}\\cmidrule(lr){9-10}',
+                       ' & Impact & Trough & Year & Long run & Fixed labor & Impact & Long run'
+                       ' & GHH & Fixed labor \\\\'],
+                      {'trough yr': '%d'})
 
 print('tables.py: wrote tables to %s%s' % (args.out, (' (suffix %s)' % args.suffix) if args.suffix else ''))
