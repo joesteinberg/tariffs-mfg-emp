@@ -464,7 +464,7 @@ if have(df_all):
     ax.set_xticks(x, data_df.scenario)
     ax.axhline(0.0,color='black',ls='-',lw=1)
     ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    fit_ylim(ax, -3, 6)
+    fit_ylim(ax, -4, 6)
     ax.set_xlabel('targeted sector')
     ax.set_ylabel('change (percent total goods emp)')
     fig.tight_layout()    
