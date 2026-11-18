@@ -69,8 +69,6 @@ SINGLE = ([('China only', 0, 'chn'), ('RoW only', 1, 'row')] if args.nc == 3 els
           [('China only', 0, 'chn'), ('Low-tariff only', 3, 'ltp'), ('High-tariff only', 4, 'htp')])
 REGIONS = ['China', 'RoW'] if args.nc == 3 else ['China', 'Low-tariff', 'High-tariff']
 df_single = [[load_results(t,s,c,r,d,a,args) for s in SCEN_CODES] for _, c, _ in SINGLE]
-df_m = [load_results(t,s,2,r,d,a,args) for s in [10,11,13,14,16]]
-df_f = [load_results(t,s,2,r,d,a,args) for s in [20,21,23,24,26]]
 
 df_all_ret = load_results(t,6,2,1,0,4,args)
 df_all_noadj = load_results(t,6,2,0,0,0,args)
@@ -424,7 +422,7 @@ lr = lambda dfs, var, f=pct_chg: np.array([f(x,var)[-1] if x is not None else np
 
 data_df = pd.DataFrame({'scenario':scenarios,
                         'emp_chg1':lr(df_all,'lg'),
-                        'gdp_chg':lr(df_all,'rgdp'), 'emp_chg_m':lr(df_m,'lg'), 'emp_chg_f':lr(df_f,'lg')})
+                        'gdp_chg':lr(df_all,'rgdp')})
 for k, (_, _, tag) in enumerate(SINGLE):
     data_df['emp_chg_' + tag] = lr(df_single[k],'lg')
 for s2 in range(0,4):
@@ -577,44 +575,6 @@ if have(df_all):
     plt.clf()
 else:
     skipped('LR employment vs GDP')
-
-if have(df_all, df_m, df_f):
-    # add stacked m vs f
-    x = np.arange(len(scenarios))
-    width=0.75/2
-
-    fig,ax=create_fig()    
-    ax.bar(x-width/2, data_df.emp_chg1, width, color='black', alpha=0.99, edgecolor='black', lw=1, label='Both')
-
-    bottom_pos=np.zeros(len(scenarios))
-    bottom_neg=np.zeros(len(scenarios))
-
-    bcnt=0
-    values = data_df.emp_chg_m
-    bottom=which_bottom(bottom_pos,bottom_neg,values)
-    ax.bar(x+width/2, values, width, label='Intermediates only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
-    bottom_pos=bottom_pos+vmax(values)
-    bottom_neg=bottom_neg+vmin(values)
-    bcnt += 1
-
-    values = data_df.emp_chg_f
-    bottom=which_bottom(bottom_pos,bottom_neg,values)
-    ax.bar(x+width/2, values, width, label='Final goods only', bottom=bottom, color=colors[bcnt], alpha=0.99, edgecolor='black', lw=0.5)
-    bottom_pos=bottom_pos+vmax(values)
-    bottom_neg=bottom_neg+vmin(values)
-    bcnt += 1
-
-    ax.set_xticks(x, data_df.scenario)
-    ax.axhline(0.0,color='black',ls='-',lw=1)
-    ax.legend(frameon=True, loc='upper right',fontsize=8, framealpha=1, edgecolor='white',borderpad=0,borderaxespad=1)
-    fit_ylim(ax, -2.5, 3.5)
-    ax.set_xlabel('targeted sector')
-    ax.set_ylabel('pct change in total goods emp')
-    fig.tight_layout()    
-    savefig('fig_lr_emp_all_vs_m_vs_f')
-    plt.clf()
-else:
-    skipped('intermediates-only / final-only comparison')
 
 # LR goods employment under alternative long-run Armington elasticities (paper Figure 3c): baseline
 # vs. the Caliendo-Parro and KRS vectors (runs solved with model.bin -e cp / -e krs; see sig_table.py).

@@ -28,7 +28,7 @@ import subprocess
 
 BASE_ARGS = ['-t', '25', '-s', '6', '-c', '2', '-r', '2', '-d', '0', '-a', '4']
 STAT = 'ae'
-BASE_TARGET = 0.4732697761   # `ae` at baseline phi_Z = 2.9 and baseline elasticities (4 regions; 3 regions: 0.4811530373)
+BASE_TARGET = 0.4769272653   # `ae` at baseline phi_Z = 2.9 and baseline elasticities (4 regions; 0.4733 before the lshare fix; 3 regions: 0.4811530373)
 
 
 def fmt(phi):

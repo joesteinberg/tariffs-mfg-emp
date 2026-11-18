@@ -1,0 +1,10 @@
+# Python packages used by programs/python and programs/c/calibrate_phiz.py (versions last used).
+# Install with: pip install -r requirements.txt
+numpy==1.26.4
+pandas==2.2.3
+matplotlib==3.5.1
+seaborn==0.13.2
+scikit-learn==1.7.1
+scipy==1.15.3
+openpyxl==3.1.5
+pyarrow==23.0.1

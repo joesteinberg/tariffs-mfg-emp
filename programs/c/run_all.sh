@@ -1,22 +1,34 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-# Every model run used in the paper and its appendix (4-region baseline: USA, China, low-tariff
-# and high-tariff partners). Build first: make model model_nt200. Inputs: ../python/output/iomat.txt
-# (python3 icio.py --nc4) and src/trump2025_tariffs.h (python3 trump2025_tariffs.py).
-# The phi_Z values used with -z lo/hi and -e NAME (PHIZ_LO, PHIZ_HI, SIG_PHIZ in src/globals.h) come
-# from calibrate_phiz.py, which solves the symmetric experiment below; rerun it if the model changes.
-# The original 3-region results are archived in ../../archive/nc3 (make model_nc3 reproduces them).
+# Every model run used in the paper and its appendix (4 regions: USA, China, low-tariff and
+# high-tariff partners). Run from programs/c after building (make) and after
+# ../python/icio.py has written ../python/output/iomat.txt.
 #
-# Flags: -t tariff (%), -s targeted sector (0 Oil, 1 Steel, 3 Toys, 4 Cars, 6 all goods; +10
-# intermediates only, +20 final goods only), -c targeted partners (0 China, 2 all, 3 low-tariff,
-# 4 high-tariff), -r retaliation (1) or symmetric tariffs (2), -d duration, -a adjustment costs
-# (4 all, 0 none, 1 labor, 2 capital, 3 sourcing), -p 1 the 2025 schedule.
+# usage: ./run_all.sh               runs one solve at a time
+#        JOBS=8 ./run_all.sh        runs up to 8 solves at a time (each 100-period solve needs
+#                                   about 23 GB of RAM; the 200-period solves at the end need
+#                                   about 90 GB and run JOBS_NT200 at a time, default 1)
+#
+# The phi_Z values used with -z lo/hi and -e NAME (PHIZ_LO, PHIZ_HI, SIG_PHIZ in src/globals.h)
+# come from calibrate_phiz.py, which solves the symmetric experiment below for several phi_Z.
+# They are hard-coded, so this script does not rerun the calibration.
+#
+# Flags: -t tariff (%), -s targeted sector (0 Oil, 1 Steel, 3 Toys, 4 Cars, 6 all goods),
+# -c targeted partners (0 China, 2 all, 3 low-tariff, 4 high-tariff), -r retaliation (1) or
+# symmetric tariffs (2), -d duration (0 permanent), -a adjustment costs (4 all, 0 none, 1 labor
+# only, 2 capital only, 3 sourcing only), -p 1 the 2025 schedule, -l 0 endogenous (GHH) labor
+# supply, -z phi_Z (lo/hi), -e long-run Armington elasticity vector, -b portfolio adjustment cost.
+set -euo pipefail
+cd "$(dirname "$0")"
+mkdir -p output
+JOBS=${JOBS:-1}
+JOBS_NT200=${JOBS_NT200:-1}
 
-run() { # run <log tag> <args...>
-    local tag=$1; shift
-    ./bin/model.bin "$@" > output/log_${tag}.txt
+run_bin() { # run_bin <binary> <max parallel> <log tag> <args...>
+    local bin=$1 maxj=$2 tag=$3; shift 3
+    while [ "$(jobs -rp | wc -l)" -ge "$maxj" ]; do wait -n; done
+    "$bin" "$@" > output/log_${tag}.txt &
 }
+run() { local tag=$1; shift; run_bin ./bin/model.bin "$JOBS" "$tag" "$@"; }
 
 # Main results: 25% tariffs on each sector and on all goods, on all partners (-c 2) and on each
 # partner region alone (-c 0 China, -c 3 low-tariff, -c 4 high-tariff partners: trade diversion).
@@ -26,13 +38,8 @@ for s in 0 1 3 4 6; do
     done
 done
 
-# The 2025 schedule (bloc-specific rates from src/trump2025_tariffs.h).
+# The 2025 schedule (region-specific rates from src/trump2025_tariffs.h).
 run trump2025_r0_d0_a4 -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1
-
-# Tariffs on intermediate inputs only, and on final goods only.
-for s in 10 11 13 14 16 20 21 23 24 26; do
-    run t25_s${s}_c2_r0_d0_a4 -t 25 -s $s -c 2 -r 0 -d 0 -a 4
-done
 
 # Tariffs on all goods with retaliation, and without adjustment costs.
 run t25_s6_c2_r1_d0_a4 -t 25 -s 6 -c 2 -r 1 -d 0 -a 4
@@ -73,15 +80,17 @@ for e in cp krs half u2 umean u5; do
     done
     run trump2025_r0_d0_a4_sig_${e} -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1 -e $e
 done
+wait_all() { for pid in $(jobs -p); do wait "$pid"; done; }   # fails if any solve failed
+wait_all
 
 # Portfolio adjustment cost (appendix): each country pays (psi_B/2)(b' - b0)^2/100 to hold bonds
 # different from its initial position, so net foreign assets return to their initial level in
 # the long run. 200-period horizon (bin/model_nt200.bin); outputs carry _psib<psi>_nt200, and each
 # run also writes ss1_*: the tariff steady state with bonds at b0, the same for every psi_B.
-# These runs need much more memory than the others (roughly 85 GB each).
 for b in 0.02 0.01 0.005; do
     for s in 0 1 3 4 6; do
-	./bin/model_nt200.bin -t 25 -s $s -c 2 -r 0 -d 0 -a 4 -b $b > output/log_t25_s${s}_c2_r0_d0_a4_psib${b}_nt200.txt
+	run_bin ./bin/model_nt200.bin "$JOBS_NT200" t25_s${s}_c2_r0_d0_a4_psib${b}_nt200 -t 25 -s $s -c 2 -r 0 -d 0 -a 4 -b $b
     done
-    ./bin/model_nt200.bin -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1 -b $b > output/log_trump2025_r0_d0_a4_psib${b}_nt200.txt
+    run_bin ./bin/model_nt200.bin "$JOBS_NT200" trump2025_r0_d0_a4_psib${b}_nt200 -t 0 -s 6 -c 2 -r 0 -d 0 -a 4 -p 1 -b $b
 done
+wait_all

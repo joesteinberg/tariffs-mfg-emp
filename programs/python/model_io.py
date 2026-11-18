@@ -13,9 +13,6 @@ Command-line options (parsed by both scripts):
                 the same suffix. Combines with --ghh and --pz.
   --psib PSI    use the runs solved with a portfolio adjustment cost psi_B = PSI (C option -b PSI;
                 files with the _psib<PSI> suffix, PSI as "%g"); outputs get the same suffix.
-  --nc 3        use the original 3-region model's runs (USA, CHN, rest of world; files with the _nc3
-                suffix, from bin/model_nc3.bin). The default is the 4-region baseline (USA, CHN,
-                low-tariff and high-tariff partners). Combines with the others.
   --nt N        horizon of the runs, if not the default 100 periods (files with the _nt<N> suffix,
                 from bin/model_nt200.bin for N = 200). The psi_B runs use --nt 200.
   --partial     allow expected model runs to be missing. Only into a fresh --out directory: the
@@ -58,9 +55,9 @@ def parse_args():
     ap.add_argument('--sig', default=None, help='long-run elasticity vector (C option -e)')
     ap.add_argument('--psib', default=None, help='portfolio adjustment cost (C option -b)')
     ap.add_argument('--nt', type=int, default=100, help='horizon (C binary model_nt<N>.bin)')
-    ap.add_argument('--nc', type=int, default=4, choices=[3, 4], help='regions (3: C binary model_nc3.bin)')
     ap.add_argument('--partial', action='store_true')
     args = ap.parse_args()
+    args.nc = 4          # regions (the C code also compiles with NC = 3; not used in the paper)
     args.suffix = suffix(args.ghh, args.pz, args.sig, args.psib, args.nt, args.nc)
     args.sens = (args.ghh or args.pz is not None or args.sig is not None or args.psib is not None
                  or args.nt != 100 or args.nc != 4)
