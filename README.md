@@ -2,7 +2,7 @@
 
 ## Overview
 
-The code in this replication package builds a four-region, six-sector input-output representation of the world economy from public data (OECD, 2023; BEA, n.d.), solves the dynamic general-equilibrium model described in Section 2 of the paper under each tariff scenario, and produces every figure and generated table in the paper and its online appendix. It uses Python and C. One main script, `run_replication.sh`, runs all of the steps in order. The model solves are memory-intensive: each needs about 23 GB of RAM, and the 18 solves with a 200-period horizon (Appendix H) need about 90 GB each. Running the 92 standard solves eight at a time and the 200-period solves one at a time, a replicator should expect the code to run for about [TO BE FILLED IN AFTER THE FINAL FULL RUN] hours on a 64-core workstation with 256 GB of RAM.
+The code in this replication package builds a four-region, six-sector input-output representation of the world economy from public data (OECD, 2023; BEA, n.d.), solves the dynamic general-equilibrium model described in Section 2 of the paper under each tariff scenario, and produces every figure and generated table in the paper and its online appendix. It uses Python and C. One main script, `run_replication.sh`, runs all of the steps in order. The model solves are memory-intensive: each needs about 23 GB of RAM, and the 18 solves with a 200-period horizon (Appendix H) need about 90 GB each. Running the 92 standard solves eight at a time and the 200-period solves two at a time (`JOBS=8 OMP_NUM_THREADS=8 JOBS_NT200=2 THREADS_NT200=32 ./run_replication.sh`), a replicator should expect the code to run for about 11 hours on a 64-core workstation with 256 GB of RAM.
 
 ## Data Availability and Provenance Statements
 
@@ -105,22 +105,22 @@ The scripts use bash and were run on Linux (Ubuntu 22.04). The Python scripts fo
 
 Approximate time needed to reproduce the analyses on a 64-core workstation with 256 GB of RAM:
 
-- [x] 8-24 hours [TO BE CONFIRMED AFTER THE FINAL FULL RUN]
+- [x] 8-24 hours
 
 #### Summary of required storage space
 
 Approximate storage space needed:
 
-- [x] 250 MB - 2 GB [TO BE CONFIRMED AFTER THE FINAL FULL RUN]
+- [x] 250 MB - 2 GB (the package is about 70 MB; the model output is about 420 MB and the figures and tables about 25 MB)
 
 #### Computational Details
 
 The code was last run on a workstation with an AMD Ryzen Threadripper 3990X (64 cores, 128 threads), 251 GB of RAM, and Ubuntu 22.04.4 LTS (Linux 6.8).
 
 - `icio.py` takes under a minute.
-- Each of the 92 standard model solves (100-period horizon) needs about 23 GB of RAM and about 200 CPU-minutes; with 12 OpenMP threads and seven solves running at once, each took about 20 minutes. Set `JOBS` to the number of solves the machine's memory can hold at once (for example, `JOBS=8` with 256 GB) and `OMP_NUM_THREADS` to the number of cores divided by `JOBS`.
-- Each of the 18 solves with a 200-period horizon (`bin/model_nt200.bin`, Appendix H) needs about 90 GB of RAM and [TO BE FILLED IN] hours. They run after the standard solves, `JOBS_NT200` at a time (default 1).
-- Creating the figures and tables takes about [TO BE FILLED IN] minutes.
+- Each of the 92 standard model solves (100-period horizon) needs about 23 GB of RAM and about 130 CPU-minutes; with 8 OpenMP threads and up to eight solves running at once, each took about 17 minutes (2 to 40 minutes), about 3.5 hours for all 92. Set `JOBS` to the number of solves the machine's memory can hold at once (for example, `JOBS=8` with 256 GB) and `OMP_NUM_THREADS` to the number of cores divided by `JOBS`.
+- Each of the 18 solves with a 200-period horizon (`bin/model_nt200.bin`, Appendix H) needs about 90 GB of RAM; with 32 OpenMP threads and two solves running at once, each took about 45 minutes (40 to 100 minutes), about 7 hours for all 18. They run after the standard solves, `JOBS_NT200` at a time (default 1; `JOBS_NT200=2` fits in 256 GB), with `THREADS_NT200` threads each if set (otherwise `OMP_NUM_THREADS`).
+- Creating the figures and tables takes about 5 minutes.
 
 ## Description of programs/code
 

@@ -7,6 +7,9 @@
 #        JOBS=8 ./run_all.sh        runs up to 8 solves at a time (each 100-period solve needs
 #                                   about 23 GB of RAM; the 200-period solves at the end need
 #                                   about 90 GB and run JOBS_NT200 at a time, default 1)
+#        OMP_NUM_THREADS sets the threads per solve; THREADS_NT200, if set, replaces it for
+#        the 200-period solves (e.g. JOBS=8 OMP_NUM_THREADS=8 JOBS_NT200=2 THREADS_NT200=32
+#        on 64 cores and 256 GB)
 #
 # The phi_Z values used with -z lo/hi and -e NAME (PHIZ_LO, PHIZ_HI, SIG_PHIZ in src/globals.h)
 # come from calibrate_phiz.py, which solves the symmetric experiment below for several phi_Z.
@@ -87,6 +90,7 @@ wait_all
 # different from its initial position, so net foreign assets return to their initial level in
 # the long run. 200-period horizon (bin/model_nt200.bin); outputs carry _psib<psi>_nt200, and each
 # run also writes ss1_*: the tariff steady state with bonds at b0, the same for every psi_B.
+if [ -n "${THREADS_NT200:-}" ]; then export OMP_NUM_THREADS=$THREADS_NT200; fi
 for b in 0.02 0.01 0.005; do
     for s in 0 1 3 4 6; do
 	run_bin ./bin/model_nt200.bin "$JOBS_NT200" t25_s${s}_c2_r0_d0_a4_psib${b}_nt200 -t 25 -s $s -c 2 -r 0 -d 0 -a 4 -b $b

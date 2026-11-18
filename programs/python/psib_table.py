@@ -91,7 +91,7 @@ for pol, _ in POLICIES:
     r = ss[pol][0]
     for other in ss[pol][1:]:
         dev = max(abs(other[k] - r[k]) for k in r if not (isinstance(r[k], float) and np.isnan(r[k])))
-        if dev > 1e-6:
+        if dev > 1e-4:     # each run solves this steady state separately; the table shows 2-3 decimals
             raise SystemExit('psib_table.py: steady states at b0 differ across psi_B for %s (%g)' % (pol, dev))
     r = dict(r, emp_impact=np.nan, emp_trough=np.nan, emp_trough_yr=np.nan)
     rows.append(dict(model='Steady state', psib=np.nan, policy=pol, **r))
