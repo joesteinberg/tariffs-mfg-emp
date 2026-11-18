@@ -322,10 +322,11 @@ uint store_base_period_values(params * p)
   double usa_nfa_usdmm = -19853153.3747712;
   double chn_nfa_usdmm = 2908203;
 
-  // from US BEA data
+  // from US BEA data: sectoral shares of 2023 U.S. labor compensation (data/ComponentsOfVa.xlsx),
+  // aggregated to the current clusters by ../python/icio.py, which prints this line ("C: ...");
+  // keep the two in sync if the clustering changes
   double agg_cap_share = 0.34;
-  //double lshare[NS] = {0.043594, 0.060821, 0.843225, 0.052360};
-  double lshare[NS] = {0.012035, 0.031559, 0.023539,  0.037282,  0.843225, 0.052360};
+  double lshare[NS] = {0.029574, 0.014399, 0.018609, 0.041832, 0.843225, 0.052360};
 
 
   SET_ALL_V(p->y0,NC*NS,0.0);

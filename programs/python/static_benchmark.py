@@ -25,7 +25,7 @@ GOODS = range(4)
 NAMES = ['Oil', 'Steel', 'Toys', 'Cars']
 ZETA = np.array([8.0, 2.0, 4.0, 1.05, 1.05])   # baseline Armington elasticities (calibrate.c)
 RHO_C = 0.65
-LSHARE = np.array([0.012035, 0.031559, 0.023539, 0.037282, 0.843225, 0.052360])  # calibrate.c
+LSHARE = np.array([0.029574, 0.014399, 0.018609, 0.041832, 0.843225, 0.052360])  # calibrate.c
 CAP_SHARE = 0.34
 
 

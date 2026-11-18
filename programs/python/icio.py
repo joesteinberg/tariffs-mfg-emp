@@ -322,23 +322,37 @@ print('\nComputing sectoral employment shares...')
 
 lc = pd.read_excel('../../data/ComponentsOfVa.xlsx',sheet_name='UVCT2-A',skiprows=7).rename(columns={'ICIO Industry Code':'ind','2023':'lcomp'})
 lc = lc.loc[~(lc.ind.isnull()),['ind','lcomp']].groupby('ind').sum().reset_index()
+
+# BEA combines some ICIO industries that belong to different clusters (C20;C21 = chemicals +
+# pharmaceuticals, A01_02;A03 = agriculture + fishing). Split these codes into their ICIO
+# industries in proportion to 2020 U.S. value added in the ICIO table.
+usva = csv.loc[csv.row_label=='VA',[c for c in csv.columns if c.startswith('USA_')]].iloc[0]
+usva.index = usva.index.str[4:]
+rows = []
+for _, r in lc.iterrows():
+    parts = [p for p in r.ind.split(';') if p in usva.index]
+    if len(parts) > 1:
+        w = usva[parts] / usva[parts].sum()
+        rows += [{'ind': p, 'lcomp': r.lcomp * w[p]} for p in parts]
+    else:
+        rows.append({'ind': r.ind, 'lcomp': r.lcomp})
+lc = pd.DataFrame(rows)
 lc['lshare'] = lc.lcomp/lc.lcomp.sum()
 
-icio_inds = list(scheme.row_sector)
+clus = dict(zip(scheme2.row_sector, scheme2.row_sector3))
 def find_sector(bea_ind):
     if bea_ind == 'F':
         return 'CONS'
-    else:
-        for i in icio_inds:
-            if i in bea_ind:
-                return scheme2.loc[scheme.row_sector==i,'row_sector3'].values[0]
-        return 'SVCS'
+    return clus.get(bea_ind, 'SVCS')
 
 lc['sector'] = lc.ind.apply(find_sector)
+assert set(lc.ind) >= set(clus), 'goods industries missing from the BEA data'
 lc2=lc.groupby('sector').lshare.sum()
 ltot = lc2['UP-HI'] + lc2['UP-LO'] + lc2['DN-HI'] + lc2['DN-LO']
 
 print(lc2)
+# programs/c/src/calibrate.c hardcodes these shares (lshare); keep it in sync with this line
+print('C: double lshare[NS] = {%s};' % ', '.join('%0.6f' % lc2[s] for s in ['UP-HI','UP-LO','DN-HI','DN-LO','SVCS','CONS']))
 
 #############################################################################
 print('\nCreating sector summary figure + table...')
