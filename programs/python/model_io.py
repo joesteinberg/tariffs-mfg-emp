@@ -76,7 +76,7 @@ def parse_args():
 
 # Alternative sourcing adjustment costs (calibrate_phiz.py), as PHIZ_LO / PHIZ_HI in the C code's
 # globals.h: short-run Armington elasticity 1.0 (lo, weak frictions) and 0.2 (hi, strong frictions).
-PHIZ = {'lo': 0.6645, 'hi': 11.4}
+PHIZ = {'lo': 0.6625, 'hi': 11.78}
 PHIZ_BASE = 2.9
 
 
